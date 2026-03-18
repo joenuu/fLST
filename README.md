@@ -1,16 +1,27 @@
-Bachelor Thesis: Detecting water stress via land surface temperatures
+#Bachelor Thesis: Detecting water stress via land surface temperatures
+
+**Degree program:** Geography
+**Author:** Jonathan Lanz
+**Supervision:** Benjamin David Stocker, Yousra El-Mejjaouy
 
 This is the project containing all data and code for my Bachelor thesis "Detecting water stress via land surface temperatures". 
 Land surface temperatures (LST) reflect climatic conditions at the land surface (air temperature, radiation), and surface properties. The clue is that they also reflect to what extent water vapour fluxes cool surfaces and that plants have a strong influence on them. Hence, the activity of plants and the degree to which they are water limited have an imprit on remotely sensed LST. The challenge is to disentangle this signal from (big) satellite data. If a solution is found, it will yield a novel approach for interpreting high resolution LST data for informing our understanding of vegetation water stress across space.
 Since a bachelor thesis is limited in time and scale, I will develop a model that estimates LST from meteorological and vegetational variables that can also be sensed from space. This should enable me to estimate the LST for moist surfaces. By comparing this with actual LST measurements, conclusions about water stress in the surface could be made. 
 The approach I will take aims to fill a research gap in this topic. By testing this on a relatively small scale, I will be able to make a statement about 1) the influence of LST on water stress and 2) if a model of this kind could work for broader research.
 
-Literature:
+###Literature:
+
 Gerhards, M., Schlerf, M., Mallick, K., & Udelhoven, T. (2019). Challenges and Future Perspectives of Multi-/Hyperspectral Thermal Infrared Remote Sensing for Crop Water-Stress Detection: A Review. Remote Sensing, 11(10). https://doi.org/10.3390/rs11101240
+
 Li, Z.-L., Wu, H., Duan, S.-B., Zhao, W., Ren, H., Liu, X., & Leng, P. (2023). Satellite Remote Sensing of Global Land Surface Temperature: Definition, Methods, Products, and Applications. Reviews of Geophysics, 61. https:// doi.org/10.1029/2022RG000777
+
 Liu, N., Deng, Z., Wang, H., Luo, Z., & Gutiérrez-Jurado, H. A. (2020). Thermal remote sensing of plant water stress in natural ecosystems. Forest Ecology and Management, 476. https://doi.org/10.1016/j.foreco.2020.118433
+
 Nandy, A., & Kumar, A. (2025). Spatio-temporal Assessment of Land Surface Temperature, Vegetation and Crop Water Stress for Sustainable Land Management in Upper Brahmaputra Valley, Assam. Indian Journal of Agricultural Research, 59, 141–148. https://doi.org/10.18805/IJARe.A-6415
+
 Raoufi, R., & Beighley, E. (2017). Estimating Daily Global Evapotranspiration Using Penman–Monteith Equation and Remotely Sensed Land Surface Temperature. Remote Sensing, 9(11). https://doi.org/10.3390/rs9111138
+
 Soylu, M. E., Kucharik, C. J., & Loheide II, S. P. (2014). Influence of groundwater on plant water use and productivity: Development of an integrated ecosystem – Variably saturated soil water flow model. Agricultural and Forest Meteorology, 189–190, 198–210. https://doi.org/10.1016/j.agrformet.2014.01.019
+
 Stocker, B. D., Zscheischler, J., Keenan, T. F., Prentice, I. C., Peñuelas, J., & Seneviratne, S. I. (2018). Quantifying soil moisture impacts on light use efficiency across biomes. New Phytologist, 218, 1430–1449. https://doi.org/10.1111/nph.15123
 

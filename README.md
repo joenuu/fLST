@@ -1,7 +1,9 @@
 # Bachelor Thesis: Detecting water stress via land surface temperatures
 
 **Degree program:** Geography
+
 **Author:** Jonathan Lanz
+
 **Supervision:** Benjamin David Stocker, Yousra El-Mejjaouy
 
 This is the project containing all data and code for my Bachelor thesis "Detecting water stress via land surface temperatures". 

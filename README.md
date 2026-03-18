@@ -1,4 +1,4 @@
-#Bachelor Thesis: Detecting water stress via land surface temperatures
+# Bachelor Thesis: Detecting water stress via land surface temperatures
 
 **Degree program:** Geography
 **Author:** Jonathan Lanz
@@ -9,7 +9,7 @@ Land surface temperatures (LST) reflect climatic conditions at the land surface 
 Since a bachelor thesis is limited in time and scale, I will develop a model that estimates LST from meteorological and vegetational variables that can also be sensed from space. This should enable me to estimate the LST for moist surfaces. By comparing this with actual LST measurements, conclusions about water stress in the surface could be made. 
 The approach I will take aims to fill a research gap in this topic. By testing this on a relatively small scale, I will be able to make a statement about 1) the influence of LST on water stress and 2) if a model of this kind could work for broader research.
 
-###Literature:
+### Literature:
 
 Gerhards, M., Schlerf, M., Mallick, K., & Udelhoven, T. (2019). Challenges and Future Perspectives of Multi-/Hyperspectral Thermal Infrared Remote Sensing for Crop Water-Stress Detection: A Review. Remote Sensing, 11(10). https://doi.org/10.3390/rs11101240
 

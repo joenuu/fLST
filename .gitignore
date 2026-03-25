@@ -5,9 +5,6 @@
 # Session Data files
 .RData
 
-# Large data files
-/data-raw
-
 # User-specific files
 .Ruserdata
 

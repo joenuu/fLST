@@ -6,7 +6,12 @@
 .RData
 
 # Large data
-/data-raw
+/lc
+/lst
+/elev
+/ssrd
+/t2m
+/pcwd
 
 # User-specific files
 .Ruserdata

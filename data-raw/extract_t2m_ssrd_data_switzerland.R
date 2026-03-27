@@ -39,11 +39,12 @@ ssrd_ch <- ssrd_all |>
 glimpse(ssrd_ch)
 
 ssrd_jjas_181920_ch <- ssrd_ch |>
-  mutate(datetime = as_datetime(datetime)) |>
+  mutate(date = as_date(datetime)) |>
   filter(
     month(datetime) %in% c(6, 7, 8, 9),
     year(datetime)  %in% c(2018, 2019, 2020)
-  )
+  ) |>
+  select(-datetime)
 
 glimpse(ssrd_jjas_181920_ch)
 
@@ -71,11 +72,12 @@ t2m_ch <- t2m_all |>
 glimpse(t2m_ch)
 
 t2m_jjas_181920_ch <- t2m_ch |>
-  mutate(datetime = as_datetime(datetime)) |>
+  mutate(date = as_date(datetime)) |>
   filter(
     month(datetime) %in% c(6, 7, 8, 9),
     year(datetime)  %in% c(2018, 2019, 2020)
-  )
+  ) |>
+  select(-datetime)
 
 glimpse(t2m_jjas_181920_ch)
 
@@ -103,12 +105,11 @@ glimpse(pcwd_ch)
 
 pcwd_jjas_181920_ch <- pcwd_ch |>
   select(-year) |>
-  mutate(datetime = as_datetime(date)) |>
   filter(
     month(date) %in% c(6, 7, 8, 9),
     year(date)  %in% c(2018, 2019, 2020)
-  ) |>
-  select(-date)
+  )
+
 
 glimpse(pcwd_jjas_181920_ch)
 

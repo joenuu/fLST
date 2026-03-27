@@ -19,10 +19,9 @@ lst_all <- map(lst_files, \(f) {
 
 # MOD11A1 LST is scaled: multiply by 0.02 to get Kelvin, then convert to Celsius
 lst_jjas_181920_ch <- lst_all |>
-  rename(datetime = time,
-         lst_raw  = LST_Day_1km) |>
+  rename(lst_raw  = LST_Day_1km) |>
   mutate(
-    datetime = as_datetime(datetime),
+    date = as_date(time),
     lst_kelvin  = lst_raw * 0.02,
     lst_celsius = lst_kelvin - 273.15,
     lst_raw = NULL           # drop raw scaled integer
@@ -31,8 +30,8 @@ lst_jjas_181920_ch <- lst_all |>
          lon = round(lon, 2)) |>
   filter(
     lat >= 46.4, lat <= 47.2,
-    month(datetime) %in% c(6, 7, 8, 9),
-    year(datetime)  %in% c(2018, 2019, 2020)
+    month(date) %in% c(6, 7, 8, 9),
+    year(date)  %in% c(2018, 2019, 2020)
   )
 
 glimpse(lst_jjas_181920_ch) #to have an overview
@@ -54,17 +53,17 @@ lst_ref <- rast(lst_files[1], subds = "LST_Day_1km")
 # Resample lc to match LST grid exactly
 lc_1km <- resample(lc_rast, lst_ref, method = "near")  # nearest neighbour for categorical
 
-lc_jjas_181920_ch <- as.data.frame(lc_1km, xy = TRUE) |>
+lc_ch <- as.data.frame(lc_1km, xy = TRUE) |>
   as_tibble() |>
   rename(lon = x, lat = y, land_cover = LC_Type1) |>
   mutate(lat = round(lat, 2),
          lon = round(lon, 2))
 
-glimpse(lc_jjas_181920_ch)
+glimpse(lc_ch)
 
 #save as .rds and .csv
-saveRDS(lc_jjas_181920_ch, "/data_2/scratch/jlanz/fLST/data/lc_jjas_181920_ch.rds")
-write_csv(lc_jjas_181920_ch, "/data_2/scratch/jlanz/fLST/data/lc_jjas_181920_ch.csv")
+saveRDS(lc_ch, "/data_2/scratch/jlanz/fLST/data/lc_ch.rds")
+write_csv(lc_ch, "/data_2/scratch/jlanz/fLST/data/lc_ch.csv")
 
 
 #---extract dem and aggregate to 1km resolution---

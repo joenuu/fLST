@@ -25,11 +25,9 @@ lst_jjas_181920_ch <- lst_all |>
     lst_kelvin  = lst_raw * 0.02,
     lst_celsius = lst_kelvin - 273.15,
     lst_raw = NULL           # drop raw scaled integer
-  ) |>
-  mutate(lat = round(lat, 2),
-         lon = round(lon, 2)) |>
+  )
   filter(
-    lat >= 46.4, lat <= 47.2,
+    lat >= 46.4, lat <= 47.1,
     month(date) %in% c(6, 7, 8, 9),
     year(date)  %in% c(2018, 2019, 2020)
   )
@@ -45,19 +43,18 @@ write_csv(lst_jjas_181920_ch, "/data_2/scratch/jlanz/fLST/data/lst_jjas_181920_c
 
 #---extract lc data and disaggregate to 1km---
 
-lc_rast <- rast("/data_2/scratch/jlanz/fLST/data-raw/lc/MCD12Q1.061_500m_aid0001.nc",
-                subds = "LC_Type1")
+lc <- rast("/data_2/scratch/jlanz/fLST/data-raw/lc/MCD12Q1.061_500m_aid0001.nc")
+sds(lst_jjas_181920_ch[1])
 
 lst_ref <- rast(lst_files[1], subds = "LST_Day_1km")
 
-# Resample lc to match LST grid exactly
-lc_1km <- resample(lc_rast, lst_ref, method = "near")  # nearest neighbour for categorical
+# resample lc to lst grid
+lc_1km <- resample(lc, lst_ref, method = "near")
 
+# Convert using exact cell coordinates from the LST reference grid
 lc_ch <- as.data.frame(lc_1km, xy = TRUE) |>
   as_tibble() |>
-  rename(lon = x, lat = y, land_cover = LC_Type1) |>
-  mutate(lat = round(lat, 2),
-         lon = round(lon, 2))
+  rename(lon = x, lat = y, land_cover_type = 3)
 
 glimpse(lc_ch)
 
@@ -70,19 +67,27 @@ write_csv(lc_ch, "/data_2/scratch/jlanz/fLST/data/lc_ch.csv")
 
 dem <- rast("/data_2/scratch/jlanz/fLST/data-raw/elev/SRTMGL1_NC.003_30m_aid0001.nc")
 
-# aggregate to 1km: 1000m / 30m ≈ 33.3, so fact=33
-dem_1km <- aggregate(dem, fact = 33, fun = "mean")
-
 lst_ref <- rast(lst_files[1], subds = "LST_Day_1km")
 
-dem_resampled <- resample(dem_1km, lst_ref, method = "bilinear")
+# resample dem to lst grid
+dem_1km <- resample(dem, lst_ref, method = "bilinear")
 
+# convert dem
 dem_ch <- as.data.frame(dem_1km, xy = TRUE) |>
   as_tibble() |>
-  rename(lon = x, lat = y) |>
-  mutate(lat = round(lat, 2),
-         lon = round(lon, 2))
+  rename(lon = x, lat = y, elevation = 3)
 
 #save as .rds and .csv
 saveRDS(dem_ch, "/data_2/scratch/jlanz/fLST/data/dem_ch.rds")
 write_csv(dem_ch, "/data_2/scratch/jlanz/fLST/data/dem_ch.csv")
+
+res(lst_ref)
+res(dem_resampled)
+res(lc_1km)
+ext(lst_ref)
+ext(dem_resampled)
+ext(lc_1km)
+
+origin(lst_ref)
+origin(dem_resampled)
+origin(lc_1km)

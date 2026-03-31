@@ -11,7 +11,7 @@ ext  <- terra::ext(bbox)
 tiles <- get_tiles(
   x        = ext,
   provider = "Esri.WorldImagery",
-  zoom     = 9, #to do it fast. for final version, make higher resolution, e.g. 10
+  zoom     = 5, #to do it fast. for final version, minimum is zoom = 12
   crop     = TRUE,
   project  = FALSE
 )

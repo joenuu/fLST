@@ -1,3 +1,9 @@
+# a function to plot a satellite map of the study area
+
+# do it with lonmin = 6.0, latmin = 46.4, lonmwx = 7.5, latmax = 47.1
+
+get_map_study_area <- function(lonmin, latmin, lonmax, latmax){
+
 library(maptiles)
 library(terra)
 library(tidyterra)
@@ -5,7 +11,7 @@ library(ggplot2)
 library(cowplot)
 library(sf)
 
-bbox <- c(xmin = 6.0, ymin = 46.4, xmax = 7.5, ymax = 47.1)
+bbox <- c(xmin = lonmin, ymin = latmin, xmax = lonmax, ymax = latmax)
 ext  <- terra::ext(bbox)
 
 tiles <- get_tiles(
@@ -65,4 +71,5 @@ final_map <- ggdraw(main_map) +
     height = 0.20    # fraction of total plot height
   )
 
-final_map
+return(final_map)
+}

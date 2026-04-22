@@ -1,4 +1,3 @@
-# load packages
 library(terra)
 library(dplyr)
 library(patchwork)
@@ -13,8 +12,10 @@ library(tidyterra)
 library(ggplot2)
 library(ncdf4)
 library(tidyverse)
+library(here)
+source(here::here("R", "get_resampled_grid.R"))
 
-#---extract ssrd---
+#---extract ssrd data---
 
 ssrd_files <- list.files(
   "/data_2/scratch/jlanz/fLST/data-raw/ssrd",
@@ -29,14 +30,16 @@ ssrd_jjas_181920_ch <- map(ssrd_files, \(f) readRDS(f) |> as_tibble()) |>
   mutate(date = as_date(datetime)) |>
   filter(month(date) %in% c(6, 7, 8, 9),
          year(date)  %in% c(2018, 2019, 2020)) |>
-  select(-datetime) |> resample_to_lst_grid(tot_ssrd, lst_ref)
+  select(-datetime) |>
+  resample_to_lst_grid(tot_ssrd, lst_ref)
 
 glimpse(ssrd_jjas_181920_ch)
 
-saveRDS(ssrd_jjas_181920_ch, "/data_2/scratch/jlanz/fLST/data/ssrd_jjas_181920_ch.rds")
-write_csv(ssrd_jjas_181920_ch, "/data_2/scratch/jlanz/fLST/data/ssrd_jjas_181920_ch.csv")
+saveRDS(ssrd_jjas_181920_ch, here::here("data", "ssrd_jjas_181920_ch.rds"))
+write_csv(ssrd_jjas_181920_ch, here::here("data", "ssrd_jjas_181920_ch.csv"))
 
-#---do the same with t2m---
+
+#---extract t2m data---
 
 t2m_files <- list.files(
   "/data_2/scratch/jlanz/fLST/data-raw/t2m",
@@ -56,10 +59,11 @@ t2m_jjas_181920_ch <- map(t2m_files, \(f) readRDS(f) |> as_tibble()) |>
 
 glimpse(t2m_jjas_181920_ch)
 
-saveRDS(t2m_jjas_181920_ch, "/data_2/scratch/jlanz/fLST/data/t2m_jjas_181920_ch.rds")
-write_csv(t2m_jjas_181920_ch, "/data_2/scratch/jlanz/fLST/data/t2m_jjas_181920_ch.csv")
+saveRDS(t2m_jjas_181920_ch, here::here("data", "t2m_jjas_181920_ch.rds"))
+write_csv(t2m_jjas_181920_ch, here::here("data", "t2m_jjas_181920_ch.csv"))
 
-#---do the same with pcwd---
+
+#---extract pcwd data---
 
 pcwd_files <- list.files(
   "/data_2/scratch/jlanz/fLST/data-raw/pcwd",
@@ -77,5 +81,5 @@ pcwd_jjas_181920_ch <- map(pcwd_files, \(f) readRDS(f) |> as_tibble()) |>
 
 glimpse(pcwd_jjas_181920_ch)
 
-saveRDS(pcwd_jjas_181920_ch, "/data_2/scratch/jlanz/fLST/data/pcwd_jjas_181920_ch.rds")
-write_csv(pcwd_jjas_181920_ch, "/data_2/scratch/jlanz/fLST/data/pcwd_jjas_181920_ch.csv")
+saveRDS(pcwd_jjas_181920_ch, here::here("data", "pcwd_jjas_181920_ch.rds"))
+write_csv(pcwd_jjas_181920_ch, here::here("data", "pcwd_jjas_181920_ch.csv"))

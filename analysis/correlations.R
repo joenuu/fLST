@@ -1,26 +1,29 @@
 library(ggplot2)
+library(here)
 
 # This is a small script to plot the correlations of the different predictors and LST
 # It serves as a test if the data is ready for processing.
 
 # load data
-model_data_clean <- readRDS("/data_2/scratch/jlanz/fLST/data/model_data_clean.rds")
+model_data_clean <- readRDS(here::here("data", "model_data_clean.rds"))
 
 plot_data <- model_data_clean |>
-  select(lst_kelvin, elevation, land_cover_type, tot_ssrd, mean_t2m, doy) |>
+  select(lst_kelvin, elevation, land_cover_type, tot_ssrd, mean_t2m, doy, rin, mean_d2m) |>
   drop_na() |>
   slice_sample(n = 100000) |>
   pivot_longer(
-    cols      = c(elevation, land_cover_type, tot_ssrd, mean_t2m, doy),
+    cols      = c(elevation, land_cover_type, tot_ssrd, mean_t2m, doy, rin, mean_d2m),
     names_to  = "predictor",
     values_to = "value"
   ) |>
   mutate(
     predictor = factor(predictor,
                        levels = c("mean_t2m", "tot_ssrd", "doy",
-                                  "elevation", "land_cover_type"),
+                                  "elevation", "land_cover_type", "rin",
+                                  "mean_d2m"),
                        labels = c("Air Temperature", "Solar Radiation",
-                                  "Day of Year", "Elevation", "Land Cover"))
+                                  "Day of Year", "Elevation", "Land Cover",
+                                  "Radiation Index", "Dew Point Temperature"))
   )
 
 # let's get a nice plot

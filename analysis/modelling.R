@@ -4,8 +4,9 @@ library(ggplot2)
 library(cowplot)
 library(scico)
 library(MASS)
+library(dplyr)
 source(here::here("R", "get_pcwd_plot.R"))
-source(here::here("R", "get_lst_plot"))
+source(here::here("R", "get_lst_plot.R"))
 source(here::here("R", "get_stats_label.R")) # is executed inside get_lst_plot
 
 
@@ -33,9 +34,16 @@ pcwd_plot +
            label = "\"dry\" days", colour = "firebrick",
            hjust = 0, vjust = 1.5)
 
+# get the wet data
+wet_days <- model_data_clean |>
+  group_by(date) |>
+  summarise(mean_pcwd = mean(pcwd_mm, na.rm = TRUE)) |>
+  filter(mean_pcwd <= pcwd_threshold) |>
+  pull(date)
+
 wet_data <- model_data_clean |>
-  filter(pcwd_mm <= pcwd_threshold) |>
-  select(lst_kelvin, elevation, land_cover_type, tot_ssrd, mean_t2m) |>
+  filter(date %in% wet_days) |>
+  dplyr::select(lst_kelvin, elevation, land_cover_type, tot_ssrd, mean_t2m, rin, mean_d2m) |>
   mutate(land_cover_type = factor(land_cover_type)) |>
   drop_na()
 
@@ -46,14 +54,13 @@ glimpse(wet_data)
 #---random forest model training (this was done by AI)---
 
 # 1. Train/Test split
-set.seed(42)
+#set.seed(42)
 split      <- initial_split(wet_data, prop = 0.8)
 train_data <- training(split)
-train_sample <- train_data |> slice_sample(n = 500000)
 test_data  <- testing(split)
 
 # 3. Recipe
-rec <- recipe(lst_kelvin ~ ., data = train_sample)
+rec <- recipe(lst_kelvin ~ ., data = train_data)
 
 # 4. Random forest model definition
 rf_model <- rand_forest(
@@ -70,7 +77,7 @@ rf_workflow <- workflow() |>
   add_model(rf_model)
 
 # 6. Train
-rf_fit <- rf_workflow |> fit(data = train_sample)
+rf_fit <- rf_workflow |> fit(data = train_data)
 
 # 7. Evaluate
 predictions <- rf_fit |>
@@ -81,9 +88,10 @@ metrics(predictions, truth = lst_kelvin, estimate = .pred)
 
 # rebuild wet_data with spatial info for mapping
 all_data_pred <- model_data_clean |>
-  select(lat, lon, date, lst_kelvin, elevation, land_cover_type, tot_ssrd, mean_t2m) |>
+  dplyr::select(lat, lon, date, lst_kelvin, elevation, land_cover_type, tot_ssrd,
+         mean_t2m, rin, mean_d2m) |>
   mutate(land_cover_type = factor(land_cover_type)) |>
-  drop_na(elevation, land_cover_type, tot_ssrd, mean_t2m)
+  drop_na(elevation, land_cover_type, tot_ssrd, mean_t2m, rin, mean_d2m)
 
 # apply trained model to spatial data
 spatial_predictions <- rf_fit |>
@@ -91,6 +99,10 @@ spatial_predictions <- rf_fit |>
   bind_cols(all_data_pred) |>
   rename(lst_predicted = .pred) |>
   mutate(lst_delta = lst_kelvin - lst_predicted)
+
+glimpse(spatial_predictions)
+mean(is.na(spatial_predictions$lst_delta)) * 100
+mean(is.na(spatial_predictions$lst_kelvin)) * 100
 
 # plot predicted LST vs observed LST
 spatial_predictions |>
@@ -140,8 +152,14 @@ all_predictions <- model_data_clean |>
   dplyr::select(lat, lon, date, pcwd_mm) |>
   right_join(spatial_predictions, by = c("lat", "lon", "date"))
 
+dry_days <- all_predictions |>
+  group_by(date) |>
+  summarise(mean_pcwd = mean(pcwd_mm, na.rm = TRUE)) |>
+  filter(mean_pcwd > pcwd_threshold) |>
+  pull(date)
+
 dry_predictions <- all_predictions |>
-  filter(pcwd_mm > pcwd_threshold)
+  filter(date %in% dry_days)
 
 dry_predictions |>
   group_by(lat, lon) |>
@@ -155,7 +173,7 @@ dry_predictions |>
   theme_minimal()
 
 all_predictions |>
-  filter(date == "2020-09-04") |>
+  filter(date == "2018-09-20") |>
   ggplot(aes(x = lon, y = lat, fill = lst_delta)) +
   geom_raster() +
   scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
@@ -175,13 +193,13 @@ unique(dry_predictions$date) |> sort()
   #facet_wrap(~land_cover_type) +
  # theme_minimal()
 
-#---plotting---
+#---plotting LSTobs vs LSTpot---
 all_plot <- make_lst_plot(all_predictions,
                     obs_col  = "lst_kelvin",
                     pred_col = "lst_predicted",
                     title_label = "All days")
 
-moist_plot <- make_lst_plot(all_predictions |> filter(pcwd_mm < pcwd_threshold),
+moist_plot <- make_lst_plot(all_predictions |> filter(date %in% wet_days),
                     obs_col  = "lst_kelvin",
                     pred_col = "lst_predicted",
                     title_label = "\"Moist\" days")
@@ -203,17 +221,23 @@ combined_lst_comparison <- plot_grid(
 
 combined_lst_comparison
 
-ggsave("/data_2/scratch/jlanz/fLST/data/lst_plots.png", combined_lst_comparison, width = 18, height = 14, dpi = 300)
+# ggsave("/data_2/scratch/jlanz/fLST/data/lst_plots.png", combined_lst_comparison, width = 18, height = 14, dpi = 300)
 
 # ---physical validation: check whether the results are physically plausible---
+day_conditions <- model_data_clean |>
+  group_by(date) |>
+  summarise(mean_pcwd = mean(pcwd_mm, na.rm = TRUE)) |>
+  mutate(condition = ifelse(mean_pcwd <= pcwd_threshold, "wet", "dry"))
+
 spatial_predictions |>
-  left_join(model_data_clean |> dplyr::select(lat, lon, date, pcwd_mm),
-            by = c("lat", "lon", "date")) |>
-  mutate(condition = ifelse(pcwd_mm <= pcwd_threshold, "wet", "dry")) |>
+  left_join(day_conditions, by = "date") |>
   group_by(condition) |>
   summarise(mean_delta = mean(lst_delta, na.rm = TRUE))
 
 # ---another physical validation: check correlation with ndvi---
+# load ndvi data
+ndvi_jjas_181920_ch <- readRDS(here::here("data", "ndvi_jjas_181920_ch.rds"))
+
 dry_predictions_ndvi <- dry_predictions |>
   left_join(
     ndvi_jjas_181920_ch |> mutate(lat = round(lat, 4), lon = round(lon, 4)),

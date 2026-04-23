@@ -5,6 +5,7 @@ library(raster)
 library(ggplot2)
 library(ncdf4)
 library(here)
+library(terra)
 source(here::here("R", "get_resampled_grid.R"))
 
 #---extract lst data---
@@ -69,6 +70,7 @@ write_csv(lc_ch, here::here("data", "lc_ch.csv"))
 dem <- rast("/data_2/scratch/jlanz/fLST/data-raw/elev/SRTMGL1_NC.003_30m_aid0001.nc")
 
 lst_ref <- rast(lst_files[1], subds = "LST_Day_1km")
+saveRDS(lst_ref, here::here("data", "lst_ref.rds")) # save this for use in other scripts
 
 # resample dem to lst grid
 dem_1km <- resample(dem, lst_ref, method = "bilinear")
@@ -89,17 +91,7 @@ d2m_files <- list.files(d2m_dir, full.names = TRUE)
 
 times <- ReadNetCDF(d2m_files[1], out = "vars")
 
-library(terra)
-
 bbox <- ext(6.0, 7.5, 46.4, 47.1)
-
-d2m_all <- map(d2m_files, \(f) {
-  r <- rast(f, "mean_d2m")
-  r_crop <- crop(r, bbox)
-  as.data.frame(r_crop, xy = TRUE) |>
-    tibble::as_tibble()
-}) |>
-  list_rbind()
 
 d2m_all <- map(d2m_files, \(f) {
   r <- rast(f, "mean_d2m")
@@ -130,7 +122,7 @@ d2m_all <- map(d2m_files, \(f) {
 
 glimpse(d2m_all)
 
-# check whether all dates are in the data (should be )
+# check whether all dates are in the data (should be 366)
 n_distinct(d2m_all$date)
 
 # resample d2m to lst grid
@@ -139,7 +131,7 @@ d2m_jjas_181920_ch <- d2m_all |> resample_to_lst_grid(mean_d2m, lst_ref)
 glimpse(d2m_jjas_181920_ch)
 
 # save as .rds and .csv
-saveRDS(d2m_jjas_181920_ch, here::here("data", "dem_ch.rds"))
-write_csv(d2m_jjas_181920_ch, here::here("data", "dem_ch.csv"))
+saveRDS(d2m_jjas_181920_ch, here::here("data", "d2m_jjas_181920_ch.rds"))
+write_csv(d2m_jjas_181920_ch, here::here("data", "d2m_jjas_181920_ch.csv"))
 
 

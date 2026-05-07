@@ -10,7 +10,7 @@ source(here::here("R", "get_resampled_grid.R"))
 
 #---extract lst data---
 
-lst_dir <- "/data_2/scratch/jlanz/fLST/data-raw/lst"
+lst_dir <- here::here("data-raw/lst")
 
 lst_files <- list.files(lst_dir, pattern = "MOD11A1.*\\.nc$", full.names = TRUE)
 
@@ -42,10 +42,32 @@ lst_jjas_181920_ch |> summarise(across(everything(), ~mean(is.na(.)) * 100)) # t
 saveRDS(lst_jjas_181920_ch, here::here("data", "lst_jjas_181920_ch.rds"))
 write_csv(lst_jjas_181920_ch, here::here("data", "lst_jjas_181920_ch.csv"))
 
+# 2010 and 2015 for cross-validation of the model
+lst_jjas_1015_ch <- lst_all |>
+  rename(lst_raw  = LST_Day_1km) |>
+  mutate(
+    date = as_date(time),
+    lst_kelvin  = lst_raw,
+    lst_celsius = lst_kelvin - 273.15,
+    lst_raw = NULL           # drop raw scaled integer
+  ) |>
+  filter(
+    lat >= 46.4, lat <= 47.1,
+    month(date) %in% c(6, 7, 8, 9),
+    year(date)  %in% c(2010, 2015)
+  )
+
+glimpse(lst_jjas_1015_ch)
+lst_jjas_1015_ch |> summarise(across(everything(), ~mean(is.na(.)) * 100))
+
+#save as .rds and .csv
+saveRDS(lst_jjas_1015_ch, here::here("data", "lst_jjas_1015_ch.rds"))
+write_csv(lst_jjas_1015_ch, here::here("data", "lst_jjas_1015_ch.csv"))
+
 
 #---extract lc data and disaggregate to 1km---
 
-lc <- rast("/data_2/scratch/jlanz/fLST/data-raw/lc/MCD12Q1.061_500m_aid0001.nc")
+lc <- rast(here::here("data-raw/lc", "MCD12Q1.061_500m_aid0001.nc"))
 sds(lst_jjas_181920_ch[1])
 
 lst_ref <- rast(lst_files[1], subds = "LST_Day_1km")
@@ -67,7 +89,7 @@ write_csv(lc_ch, here::here("data", "lc_ch.csv"))
 
 #---extract dem and aggregate to 1km resolution---
 
-dem <- rast("/data_2/scratch/jlanz/fLST/data-raw/elev/SRTMGL1_NC.003_30m_aid0001.nc")
+dem <- rast(here::here("data-raw/elev", "SRTMGL1_NC.003_30m_aid0001.nc"))
 
 lst_ref <- rast(lst_files[1], subds = "LST_Day_1km")
 saveRDS(lst_ref, here::here("data", "lst_ref.rds")) # save this for use in other scripts
@@ -84,8 +106,9 @@ dem_ch <- as.data.frame(dem_1km, xy = TRUE) |>
 saveRDS(dem_ch, here::here("data", "dem_ch.rds"))
 write_csv(dem_ch, here::here("data", "dem_ch.csv"))
 
+
 #---extract d2m data and aggregate to 1km resolution---
-d2m_dir <- "/data_2/scratch/jlanz/fLST/data-raw/d2m"
+d2m_dir <- here::here("data-raw/d2m")
 
 d2m_files <- list.files(d2m_dir, full.names = TRUE)
 
@@ -122,16 +145,29 @@ d2m_all <- map(d2m_files, \(f) {
 
 glimpse(d2m_all)
 
-# check whether all dates are in the data (should be 366)
+# check whether all dates are in the data (should be 610)
 n_distinct(d2m_all$date)
 
 # resample d2m to lst grid
-d2m_jjas_181920_ch <- d2m_all |> resample_to_lst_grid(mean_d2m, lst_ref)
+d2m_jjas_181920_ch <- d2m_all |>
+  dplyr::filter(year(date) %in% c(2018, 2019, 2020))|>
+  resample_to_lst_grid(mean_d2m, lst_ref)
 
 glimpse(d2m_jjas_181920_ch)
 
 # save as .rds and .csv
 saveRDS(d2m_jjas_181920_ch, here::here("data", "d2m_jjas_181920_ch.rds"))
 write_csv(d2m_jjas_181920_ch, here::here("data", "d2m_jjas_181920_ch.csv"))
+
+# 2010 and 2015 for cross-validation of the model
+d2m_jjas_1015_ch <- d2m_all |> dplyr::filter(year(date) %in% c(2010, 2015)) |>
+resample_to_lst_grid(mean_d2m, lst_ref)
+
+glimpse(d2m_jjas_1015_ch)
+
+# save as .rds and .csv
+saveRDS(d2m_jjas_1015_ch, here::here("data", "d2m_jjas_1015_ch.rds"))
+write_csv(d2m_jjas_1015_ch, here::here("data", "d2m_jjas_1015_ch.csv"))
+
 
 

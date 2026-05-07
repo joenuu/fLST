@@ -2,6 +2,7 @@ library(tidyverse)
 library(lubridate)
 library(here)
 
+# ---prepare the data such that it can be processed in the model---
 
 # load data
 lst_data       <- readRDS(here::here("data", "lst_jjas_181920_ch.rds"))
@@ -12,6 +13,8 @@ ssrd_data      <- readRDS(here::here("data", "ssrd_jjas_181920_ch.rds"))
 t2m_data       <- readRDS(here::here("data", "t2m_jjas_181920_ch.rds"))
 pcwd_data      <- readRDS(here::here("data", "pcwd_jjas_181920_ch.rds"))
 d2m_data       <- readRDS(here::here("data", "d2m_jjas_181920_ch.rds"))
+
+glimpse(d2m_data)
 
 elevation_data |> count(lat, lon) |> filter(n > 1) # to check if data is ok
 landcover_data |> count(lat, lon) |> filter(n > 1)
@@ -51,3 +54,39 @@ glimpse(model_data_clean)
 
 saveRDS(model_data_clean, here::here("data", "model_data_clean.rds"))
 write_csv(model_data_clean, here::here("data", "model_data_clean.csv"))
+
+# ---prepare the data for model cross-validation---
+
+# load data
+lst_val_data <- readRDS(here::here("data", "lst_jjas_1015_ch.rds"))
+ssrd_val_data <- readRDS(here::here("data", "ssrd_jjas_1015_ch.rds"))
+t2m_val_data <- readRDS(here::here("data", "t2m_jjas_1015_ch.rds"))
+d2m_val_data <- readRDS(here::here("data", "d2m_jjas_1015_ch.rds"))
+pcwd_val_data <- readRDS(here::here("data", "pcwd_jjas_1015_ch.rds"))
+
+# join all data into one tibble
+validation_data <- lst_val_data |>
+  round_coords() |>
+  left_join(elevation_data |> round_coords(),  by = c("lat", "lon"),
+            relationship = "many-to-one") |>
+  left_join(landcover_data |> round_coords(),  by = c("lat", "lon"),
+            relationship = "many-to-one") |>
+  left_join(rin_data |> round_coords(),        by = c("lat", "lon"),
+            relationship = "many-to-one")  |>
+  left_join(ssrd_val_data |> round_coords(),       by = c("lat", "lon", "date")) |>
+  left_join(t2m_val_data |> round_coords(),        by = c("lat", "lon", "date")) |>
+  left_join(pcwd_val_data |> round_coords(),       by = c("lat", "lon", "date")) |>
+  left_join(d2m_val_data |> round_coords(),        by = c("lat", "lon", "date")) |>
+  mutate(
+    doy  = yday(date),
+    year = factor(year(date))
+  )
+
+validation_data_clean <- validation_data |>
+  filter(!is.na(elevation),
+         !is.na(tot_ssrd))
+
+glimpse(validation_data_clean)
+
+saveRDS(validation_data_clean, here::here("data", "validation_data_clean.rds"))
+write_csv(validation_data_clean, here::here("data", "validation_data_clean.csv"))

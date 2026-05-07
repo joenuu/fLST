@@ -1,6 +1,6 @@
 # a function to plot predicted values vs observed values, similar to Stocker et al. (2018)
 
-make_lst_plot <- function(df, obs_col, pred_col, title_label) {
+make_lst_plot <- function(df, obs_col, pred_col, title_label, obs_label, pred_label) {
 
   source(here::here("R", "get_stats_label.R"))
 
@@ -39,8 +39,8 @@ make_lst_plot <- function(df, obs_col, pred_col, title_label) {
              hjust = 0, vjust = 0, size = 3.2) +
     ggplot2::coord_equal(xlim = axis_lim, ylim = axis_lim) +
     ggplot2::labs(title = title_label,
-         x = "Observed LST [K]",
-         y = "Predicted LST [K]") +
+         x = obs_label,
+         y = pred_label) +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5))
 }

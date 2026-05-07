@@ -1,13 +1,21 @@
+# --- some plots to get an overview of the results ---
 library(ggplot2)
 library(here)
 library(scico)
+library(dplyr)
+library(cowplot)
 
 # load data
 model_data_clean <- readRDS(here::here("data", "model_data_clean.rds"))
+spatial_predictions_lst <- readRDS(
+  here::here("data", "spatial_predictions_lst.rds"))
 
-spatial_predictions_lst <- readRDS(here::here("data", "spatial_predictions_lst.rds"))
+nrow(spatial_predictions_lst)
+names(spatial_predictions_lst)
 
-# plot predicted LST vs observed LST
+ggplot(data.frame(x = 1:10, y = 1:10), aes(x, y)) + geom_point()
+
+# plot predicted LST vs observed LS
 spatial_predictions_lst |>
   slice_sample(n = 50000) |>  # sample for speed
   ggplot(aes(x = lst_predicted, y = lst_kelvin)) +
@@ -29,7 +37,7 @@ plot_1 <- spatial_predictions_lst |>
 
 plot_1
 
-# plot map with measured LST for any given (clear) day
+# plot map with measured LST for any given day
 plot_2 <- model_data_clean |>
   filter(date == "2018-07-01") |>
   ggplot(aes(x = lon, y = lat, fill = lst_kelvin)) +
@@ -42,6 +50,8 @@ plot_2 <- model_data_clean |>
 plot_2
 
 combined_plot <- plot_grid(plot_1, plot_2, ncol = 2)
+
+combined_plot
 
 ggdraw() +
   draw_label("Predicted vs. Measured LST – 2020-08-10",

@@ -9,7 +9,8 @@ library(here)
 source(here::here("R", "get_pcwd_plot.R"))
 
 # load data
-model_data_clean <- readRDS(here::here("data", "model_data_clean.rds"))
+model_data_clean <- readRDS(here::here("data", "model_data_clean.rds")) |>
+  filter(!land_cover_type %in% c(11,17))
 
 validation_data_clean <- readRDS(here::here("data", "validation_data_clean.rds"))
 
@@ -48,7 +49,7 @@ wet_data <- model_data_clean |>
   dplyr::select(lst_kelvin, elevation, land_cover_type, tot_ssrd, mean_t2m, rin, mean_d2m) |>
   mutate(land_cover_type = factor(land_cover_type)) |>
   drop_na() |>
-  filter(land_cover_type %in% c(11,17))
+  filter(!land_cover_type %in% c(11,17))
 
 glimpse(wet_data)
 
@@ -64,20 +65,20 @@ val_data <- validation_data_clean |>
   dplyr::select(lst_kelvin, elevation, land_cover_type, tot_ssrd, mean_t2m, rin, mean_d2m) |>
   mutate(land_cover_type = factor(land_cover_type)) |>
   drop_na() |>
-  filter(land_cover_type %in% c(11,17))
+  filter(!land_cover_type %in% c(11,17))
 
 #---random forest model training (this was done mostly by AI)---
 
-# 1. Train/Test split
-set.seed(42)
+# split
+set.seed(42) # for reproducibility
 split      <- initial_split(wet_data, prop = 0.8)
 train_data <- wet_data
 test_data  <- testing(split)
 
-# 3. Recipe
+# recipe
 rec <- recipe(lst_kelvin ~ ., data = train_data)
 
-# 4. Random forest model definition
+# random forest model definition
 rf_model <- rand_forest(
   trees = 100,       # number of trees
   mtry  = 3,         # predictors sampled per split (tune this)
@@ -86,16 +87,16 @@ rf_model <- rand_forest(
   set_engine("ranger", importance = "impurity") |>  # enables variable importance
   set_mode("regression")
 
-# 5. Workflow
+# workflow
 rf_workflow <- workflow() |>
   add_recipe(rec) |>
   add_model(rf_model)
 
-# 6. Train
+# train
 rf_fit <- rf_workflow |> fit(data = train_data)
 
-# 7. Evaluate
-predictions <- rf_fit |>
+# evaluate
+predictions1 <- rf_fit |>
   predict(test_data) |>
   bind_cols(test_data)
 
@@ -119,6 +120,13 @@ metrics(predictions1, truth = lst_kelvin, estimate = .pred)
 metrics(predictions2, truth = lst_kelvin, estimate = .pred)
 metrics(predictions3, truth = lst_kelvin, estimate = .pred)
 
+# ---rebuild data with spatial info for mapping---
+all_data_pred <- model_data_clean |>
+  dplyr::select(lat, lon, date, lst_kelvin, elevation, land_cover_type, tot_ssrd,
+                mean_t2m, rin, mean_d2m) |>
+  mutate(land_cover_type = factor(land_cover_type)) |>
+  drop_na(elevation, land_cover_type, tot_ssrd, mean_t2m, rin, mean_d2m)
+
 # --- train a model for LSTact---
 # train LSTact model on all days, with pcwd as additional predictor
 all_data <- model_data_clean |>
@@ -126,10 +134,11 @@ all_data <- model_data_clean |>
                 mean_t2m, rin, mean_d2m, pcwd_mm) |>
   mutate(land_cover_type = factor(land_cover_type)) |>
   drop_na() |>
-  filter(land_cover_type %in% c(11,17))
+  filter(!land_cover_type %in% c(11,17))
 
 rec_act <- recipe(lst_kelvin ~ ., data = all_data)
 
+set.seed(42) # for reproducibility
 rf_fit_act <- workflow() |>
   add_recipe(rec_act) |>
   add_model(rf_model) |>  # reuse same rf_model definition
@@ -144,13 +153,6 @@ spatial_predictions_lst_act <- rf_fit_act |>
   bind_cols(all_data_pred) |>
   rename(lst_act = .pred)
 
-
-# ---rebuild data with spatial info for mapping---
-all_data_pred <- model_data_clean |>
-  dplyr::select(lat, lon, date, lst_kelvin, elevation, land_cover_type, tot_ssrd,
-         mean_t2m, rin, mean_d2m) |>
-  mutate(land_cover_type = factor(land_cover_type)) |>
-  drop_na(elevation, land_cover_type, tot_ssrd, mean_t2m, rin, mean_d2m)
 
 # apply trained model to spatial data
 spatial_predictions_lst <- rf_fit |>
@@ -193,7 +195,7 @@ spatial_predictions_lst |>
 thresholds <- seq(0, 300, by = 5)
 
 threshold_results <- map_dfr(thresholds, function(thresh) {
-  spatial_predictions |>
+  spatial_predictions_lst |>
     left_join(model_data_clean |> dplyr::select(lat, lon, date, pcwd_mm),
               by = c("lat", "lon", "date")) |>
     mutate(condition = ifelse(pcwd_mm <= thresh, "wet", "dry")) |>

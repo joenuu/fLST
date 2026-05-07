@@ -1,11 +1,14 @@
+# --- more tangible plots ---
 library(ggplot2)
 library(here)
 library(scico)
+library(lubridate)
 source(here::here("R", "get_lst_plot.R"))
 source(here::here("R", "get_stats_label.R")) # is executed inside get_lst_plot
 
 # load data
-model_data_clean <- readRDS(here::here("data", "model_data_clean.rds"))
+model_data_clean <- readRDS(here::here("data", "model_data_clean.rds")) |>
+  filter(!land_cover_type %in% c(11,17))
 spatial_predictions_lst <- readRDS(here::here("data", "spatial_predictions_lst.rds"))
 
 
@@ -34,7 +37,7 @@ dry_predictions_lst |>
   scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
   coord_equal() +
   labs(title = "Mean ΔLST on dry days (LSTact − LSTpot)",
-       fill = "ΔT") +
+       fill = "Δ [K]") +
   theme_minimal()
 
 all_predictions_lst |>
@@ -129,44 +132,100 @@ combined_lst_comparison_act <- plot_grid(
 
 combined_lst_comparison_act
 
+#---plotting LSTact vs LSTobs
+all_plot_actvsobs <- make_lst_plot(all_predictions_lst,
+                              obs_col  = "lst_act",
+                              pred_col = "lst_kelvin",
+                              title_label = "All days",
+                              obs_label = "Actual LST [K]",
+                              pred_label = "Observed LST [K]")
+
+moist_plot_actvsobs <- make_lst_plot(all_predictions_lst |> filter(date %in% wet_days),
+                                obs_col  = "lst_act",
+                                pred_col = "lst_kelvin",
+                                title_label = "\"Moist\" days",
+                                obs_label = "Actual LST [K]",
+                                pred_label = "Observed LST [K]")
+
+dry_plot_actvsobs <- make_lst_plot(dry_predictions_lst,
+                              obs_col = "lst_act",
+                              pred_col = "lst_kelvin",
+                              title_label = "\"Dry\" days",
+                              obs_label = "Actual LST [K]",
+                              pred_label = "Observed LST [K]")
+
+
+# combine
+combined_lst_comparison_actvsobs <- plot_grid(
+  all_plot_actvsobs, moist_plot_actvsobs, dry_plot_actvsobs,
+  ncol = 2,
+  labels = c("(a)", "(b)", "(c)"),
+  label_size = 11,
+  label_fontface = "plain",
+  rel_widths = c(1, 1, 1))
+
+combined_lst_comparison_actvsobs
 
 # --- time series of DeltaLST on the dryest pixel ---
-spatial_predictions |>
-  dplyr::filter(year(date) == 2018) |>
-  dplyr::summarise(
-    lat_match = any(round(lat, 1) == 46.9),
-    lon_match = any(round(lon, 2) == 6.35)
-  )
+# --- time series of ΔLST on the driest pixel ---
 
-spatial_predictions |>
-  dplyr::filter(round(lat, 1) == 46.9, round(lon, 2) == 6.35, year(date) == 2018) |>
-  nrow()  # check how many rows match
-
-
-# get dryest pxel
-dry_predictions |>
+# get exact coordinates of driest pixel
+driest_pixel <- dry_predictions_lst |>
   group_by(lat, lon) |>
-  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE)) |>
-  ungroup() |>
+  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE), .groups = "drop") |>
   slice_max(mean_delta, n = 1)
 
-# plot
-spatial_predictions |>
-  dplyr::filter(lat == 46.9, lon == 6.35, year(date) == 2018) |>
+driest_lat <- driest_pixel$lat
+driest_lon <- driest_pixel$lon
+
+# plot it
+spatial_predictions_lst |>
+  dplyr::filter(lat == driest_lat, lon == driest_lon) |>
   left_join(model_data_clean |> dplyr::select(lat, lon, date, pcwd_mm),
             by = c("lat", "lon", "date")) |>
   ggplot(aes(x = date)) +
   geom_line(aes(y = lst_delta_smooth), colour = "firebrick") +
-  geom_line(aes(y = pcwd_mm / 20), colour = "steelblue", linetype = "dashed") +  # scaled for dual axis
+  geom_line(aes(y = pcwd_mm / 20), colour = "steelblue", linetype = "dashed") +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
   scale_y_continuous(
     name = "ΔLST [K]",
     sec.axis = sec_axis(~ . * 20, name = "PCWD [mm]")
   ) +
-  labs(title = "ΔLST and PCWD at highest stress pixel (2018)",
+  facet_wrap(~lubridate::year(date), ncol = 1, scales = "free_x") +
+  labs(title = "ΔLST and PCWD at driest pixel",
        x = "Date") +
   theme_minimal()
 
+# plot timeline of dLST and PCWD
+spatial_predictions_lst |>
+  left_join(model_data_clean |> dplyr::select(lat, lon, date, pcwd_mm),
+            by = c("lat", "lon", "date")) |>
+  group_by(date) |>
+  summarise(
+    mean_delta = mean(lst_delta_smooth, na.rm = TRUE),
+    mean_pcwd  = mean(pcwd_mm, na.rm = TRUE)
+  ) |>
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = mean_delta), colour = "firebrick") +
+  geom_line(aes(y = mean_pcwd / 20), colour = "steelblue", linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
+  scale_y_continuous(
+    name     = "Mean ΔLST [K]",
+    sec.axis = sec_axis(~ . * 20, name = "Mean PCWD [mm]")
+  ) +
+  facet_wrap(~lubridate::year(date), ncol = 1, scales = "free_x") +
+  labs(title = "Mean ΔLST and PCWD across study area",
+       x = "Date") +
+  theme_minimal()
+
+# --- deltaLST depending on land cover types
+lst_delta_lc_types <- dry_predictions_lst |>
+  mutate(land_cover_name = lc_names[as.character(land_cover_type)]) |>
+  group_by(land_cover_name) |>
+  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE)) |>
+  arrange(desc(mean_delta))
+
+lst_delta_lc_types
 
 
 

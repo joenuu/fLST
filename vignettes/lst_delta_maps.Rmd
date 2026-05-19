@@ -1,0 +1,236 @@
+---
+title: "dLST maps"
+author: "Jonathan Lanz"
+date: "2026-05-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE, 
+                      fig.path = here::here("fig/"), 
+                      dev = "png", 
+                      dpi = 300
+)
+```
+
+
+
+```{r,  include=FALSE}
+library(ggplot2)
+library(here)
+library(scico)
+library(lubridate)
+library(cowplot)
+library(dplyr)
+library(purrr)
+
+model_data_clean <- readRDS(here::here("data", "model_data_clean.rds")) |>
+  filter(!land_cover_type %in% c(11,17))
+spatial_predictions_lst <- readRDS(here::here("data", "spatial_predictions_lst.rds"))
+dry_predictions_lst <- readRDS(here::here("data", "dry_predictions_lst.rds"))
+
+lc_names <- c(
+  "1"  = "Evergreen Needleleaf Forest",
+  "4"  = "Deciduous Broadleaf Forest",
+  "5"  = "Mixed Forest",
+  "8"  = "Woody Savanna",
+  "9"  = "Savanna",
+  "10" = "Grassland",
+  "11" = "Permanent Wetland",
+  "12" = "Cropland",
+  "13" = "Urban and Built-up Land",
+  "14" = "Cropland & Natural Vegetation",
+  "16" = "Sand, Rock, Soil",
+  "17" = "Water Bodies"
+)
+```
+
+
+## Map dLST for the driest days 
+The following maps show the dLST of the three driest days of 2018, 2019 and 2020 respectively. The driest day was determined via PCWD, meaning that the driest day is equal to the one with the highest PCWD value. These are the driest days:
+```{r,  message=FALSE, warning=FALSE, echo=FALSE} 
+#get driest days
+model_data_clean |>
+  group_by(date) |>
+  summarise(mean_pcwd = mean(pcwd_mm, na.rm = TRUE)) |>
+  mutate(year = lubridate::year(date)) |>
+  group_by(year) |>
+  slice_max(mean_pcwd, n = 1)
+```
+
+Subsequently, the plots for these days are generated. 
+
+```{r map_3_driest_days,  message=FALSE, warning=FALSE, echo=FALSE}
+
+all_predictions_lst <- model_data_clean |>
+  filter(!is.na(lst_kelvin)) |>
+  dplyr::select(lat, lon, date, pcwd_mm) |>
+  right_join(spatial_predictions_lst, by = c("lat", "lon", "date"))
+
+dlst1 <- all_predictions_lst |>
+  filter(date == "2018-09-20") |>
+  ggplot(aes(x = lon, y = lat, fill = lst_delta_smooth)) +
+  geom_raster() +
+  scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
+  coord_equal() +
+  facet_wrap(~date, ncol = 4) +
+  labs(title = "ΔLST (LSTact − LSTpot)",
+       fill = "ΔT") +
+  theme_minimal()
+
+dlst2 <- all_predictions_lst |>
+  filter(date == "2019-07-25") |>
+  ggplot(aes(x = lon, y = lat, fill = lst_delta_smooth)) +
+  geom_raster() +
+  scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
+  coord_equal() +
+  facet_wrap(~date, ncol = 4) +
+  labs(title = "ΔLST (LSTact − LSTpot)",
+       fill = "ΔT") +
+  theme_minimal()
+
+dlst3 <- all_predictions_lst |>
+  filter(date == "2020-09-18") |>
+  ggplot(aes(x = lon, y = lat, fill = lst_delta_smooth)) +
+  geom_raster() +
+  scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
+  coord_equal() +
+  facet_wrap(~date, ncol = 4) +
+  labs(title = "ΔLST (LSTact − LSTpot)",
+       fill = "ΔT") +
+  theme_minimal()
+
+# combine
+combined_dlst <- plot_grid(
+  dlst1, dlst2, dlst3,
+  ncol = 2,
+  labels = c("(a)", "(b)", "(c)"),
+  label_size = 11,
+  label_fontface = "plain",
+  rel_widths = c(1, 1, 1))
+
+combined_dlst
+```
+
+## Map mean dLST over entire period
+The following map shows the mean dLST over the entire study period, meaning the summer months June, July, August and September of 2018, 2019 and 2020.
+
+```{r map_mean_dlst,  message=FALSE, warning=FALSE, echo=FALSE}
+dry_predictions_lst |>
+  filter(!land_cover_type %in% c(11, 17)) |>
+  group_by(lat, lon) |>
+  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE)) |>
+  ggplot(aes(x = lon, y = lat, fill = mean_delta)) +
+  geom_raster() +
+  scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
+  coord_equal() +
+  labs(title = "Mean ΔLST on dry days (LSTact − LSTpot)",
+       fill = "Δ [K]") +
+  theme_minimal()
+```
+
+Note that for both calculations, LSTact was used to compute dLST instead of LSTpot (i.e., lst_delta_smooth). This cancels out systematic errors of the data, hence also the ending "smooth".
+
+What stands out are the blue pixels on the south shore of the Lake Neuchâtel, Lake Murten and Lake Biel, representing a negative dLST. A comparison with the map displaying the land cover types does not indicate a possible reason.
+
+```{r map_lc_type, message=FALSE, warning=FALSE, echo=FALSE}
+# get the right colour palette
+igbp_colors <- c(
+  "Evergreen Needleleaf Forest"    = "#05450a",
+  "Deciduous Broadleaf Forest"     = "#78d203",
+  "Mixed Forest"                   = "#009900",
+  "Woody Savanna"                  = "#c6b044",
+  "Savanna"                        = "#dcd159",
+  "Grassland"                      = "#f9e8b0",
+  "Cropland"                       = "#f096ff",
+  "Cropland & Natural Vegetation"  = "#feff73",
+  "Urban and Built-up Land"        = "#ff0000",
+  "Sand, Rock, Soil"               = "#b2b2b2"
+)
+
+model_data_clean |>
+  dplyr::distinct(lat, lon, .keep_all = TRUE) |>
+  mutate(land_cover_name = lc_names[as.character(land_cover_type)]) |>
+  ggplot(aes(x = lon, y = lat, fill = land_cover_name)) +
+  geom_raster() +
+  scale_fill_manual(values = igbp_colors) +
+  coord_equal() +
+  labs(title = "Land cover types",
+       fill = "Land cover") +
+  theme_minimal()
+```
+
+
+
+```{r map_dlst_pcwd_bands_points}
+pcwd_bands <- list(
+  "PCWD 55-100"  = c(55, 100),
+  "PCWD 101-200" = c(100, 200),
+  "PCWD >200"    = c(200, Inf)
+)
+
+plots <- map(names(pcwd_bands), \(band_name) {
+  limits <- pcwd_bands[[band_name]]
+  
+  dry_predictions_lst |>
+    dplyr::filter(
+      !land_cover_type %in% c(11, 17),
+      pcwd_mm > limits[1],
+      pcwd_mm <= limits[2]
+    ) |>
+    group_by(lat, lon) |>
+    summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE), .groups = "drop") |>
+    ggplot(aes(x = lon, y = lat, fill = mean_delta)) +
+    geom_raster() +
+    scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90",
+                     limits = c(-5, 10)) +  # fixed scale for comparability
+    coord_equal() +
+    labs(title = band_name, fill = "Δ [K]") +
+    theme_minimal()
+})
+
+plot_grid(plotlist = plots, ncol = 2,
+          labels = c("(a)", "(b)", "(c)"),
+          label_size = ,
+          label_fontface = "plain")
+```
+
+
+```{r map_dlst_pcwd_bands_days}
+date_pcwd_bands <- model_data_clean |>
+  group_by(date) |>
+  summarise(mean_pcwd = mean(pcwd_mm, na.rm = TRUE)) |>
+  mutate(pcwd_band = cut(mean_pcwd,
+                         breaks = c(55, 100, 200, Inf),
+                         labels = c("PCWD 55-100", "PCWD 101-200", "PCWD >200")))
+
+plots <- map(c("PCWD 55-100", "PCWD 101-200", "PCWD >200"), \(band) {
+  dates_in_band <- date_pcwd_bands |>
+    dplyr::filter(pcwd_band == band) |>
+    dplyr::pull(date)
+  
+  dry_predictions_lst |>
+    dplyr::filter(date %in% dates_in_band,
+                  !land_cover_type %in% c(11, 17)) |>
+    group_by(lat, lon) |>
+    summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE), .groups = "drop") |>
+    ggplot(aes(x = lon, y = lat, fill = mean_delta)) +
+    geom_raster() +
+    scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90",
+                     limits = c(-5, 10)) +
+    coord_equal() +
+    labs(title = band, fill = "Δ [K]") +
+    theme_minimal()
+})
+
+p <- plot_grid(plotlist = plots, ncol = 1,
+               labels = c("(a)", "(b)", "(c)"),
+               label_size = 11,
+               label_fontface = "plain")
+
+p
+```
+
+

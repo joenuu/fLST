@@ -71,11 +71,12 @@ lc <- rast(here::here("data-raw/lc", "MCD12Q1.061_500m_aid0001.nc"))
 sds(lst_jjas_181920_ch[1])
 
 lst_ref <- rast(lst_files[1], subds = "LST_Day_1km")
+saveRDS(lst_ref, here::here("data", "lst_ref.rds")) # save this for use in other scripts
 
 # resample lc to lst grid
 lc_1km <- resample(lc, lst_ref, method = "near")
 
-# Convert using exact cell coordinates from the LST reference grid
+#convert using exact cell coordinates from the LST reference grid
 lc_ch <- as.data.frame(lc_1km, xy = TRUE) |>
   as_tibble() |>
   rename(lon = x, lat = y, land_cover_type = 3)
@@ -91,16 +92,16 @@ write_csv(lc_ch, here::here("data", "lc_ch.csv"))
 
 dem <- rast(here::here("data-raw/elev", "SRTMGL1_NC.003_30m_aid0001.nc"))
 
-lst_ref <- rast(lst_files[1], subds = "LST_Day_1km")
-saveRDS(lst_ref, here::here("data", "lst_ref.rds")) # save this for use in other scripts
-
-# resample dem to lst grid
+#resample dem to lst grid
 dem_1km <- resample(dem, lst_ref, method = "bilinear")
 
-# convert dem
+#convert dem
 dem_ch <- as.data.frame(dem_1km, xy = TRUE) |>
   as_tibble() |>
   rename(lon = x, lat = y, elevation = 3)
+
+#save the original resolution as .tif
+writeRaster(dem, here::here("data", "dem_30m.tif"), overwrite = TRUE)
 
 #save as .rds and .csv
 saveRDS(dem_ch, here::here("data", "dem_ch.rds"))

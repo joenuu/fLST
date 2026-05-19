@@ -12,8 +12,6 @@ source(here::here("R", "get_pcwd_plot.R"))
 model_data_clean <- readRDS(here::here("data", "model_data_clean.rds")) |>
   filter(!land_cover_type %in% c(11,17))
 
-validation_data_clean <- readRDS(here::here("data", "validation_data_clean.rds"))
-
 glimpse(model_data_clean)
 
 #---first: get rid of "dry" days, i.e. days above a certain threshold---
@@ -53,20 +51,6 @@ wet_data <- model_data_clean |>
 
 glimpse(wet_data)
 
-# for validation data
-val_wet_days <- validation_data_clean |>
-  group_by(date) |>
-  summarise(mean_pcwd = mean(pcwd_mm, na.rm = TRUE)) |>
-  filter(mean_pcwd <= pcwd_threshold) |>
-  pull(date)
-
-val_data <- validation_data_clean |>
-  filter(date %in% val_wet_days) |>
-  dplyr::select(lst_kelvin, elevation, land_cover_type, tot_ssrd, mean_t2m, rin, mean_d2m) |>
-  mutate(land_cover_type = factor(land_cover_type)) |>
-  drop_na() |>
-  filter(!land_cover_type %in% c(11,17))
-
 #---random forest model training (this was done mostly by AI)---
 
 # split
@@ -81,8 +65,8 @@ rec <- recipe(lst_kelvin ~ ., data = train_data)
 # random forest model definition
 rf_model <- rand_forest(
   trees = 100,       # number of trees
-  mtry  = 3,         # predictors sampled per split (tune this)
-  min_n = 10         # minimum node size (tune this)
+  mtry  = 3,         # predictors sampled per split
+  min_n = 10         # minimum node size
 ) |>
   set_engine("ranger", importance = "impurity") |>  # enables variable importance
   set_mode("regression")
@@ -100,25 +84,12 @@ predictions1 <- rf_fit |>
   predict(test_data) |>
   bind_cols(test_data)
 
-predictions2 <- rf_fit |>
-  predict(val_data) |>
-  bind_cols(val_data)
-
-val_data_no_urban <- val_data |>
-  filter(land_cover_type != 13)
-
-predictions3 <- rf_fit |>
-  predict(val_data_no_urban) |>
-  bind_cols(val_data_no_urban)
-
 
 # save model such that it can be used again without having to run it
 saveRDS(rf_fit, here::here("data", "rf_fit.rds"))
 
 # check model goodness
 metrics(predictions1, truth = lst_kelvin, estimate = .pred)
-metrics(predictions2, truth = lst_kelvin, estimate = .pred)
-metrics(predictions3, truth = lst_kelvin, estimate = .pred)
 
 # ---rebuild data with spatial info for mapping---
 all_data_pred <- model_data_clean |>

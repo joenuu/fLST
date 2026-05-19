@@ -1,0 +1,144 @@
+---
+title: "Model validation"
+author: "Jonathan Lanz"
+date: "2026-05-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE, 
+                      fig.path = here::here("fig/"), 
+                      dev = "png", 
+                      dpi = 300
+)
+```
+
+
+```{r}
+#load libraries
+library(here)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(tidymodels)
+library(ranger)
+
+
+#load model
+rf_fit <- readRDS(here::here("data", "rf_fit.rds"))
+
+#load data
+validation_data_clean <- readRDS(here::here("data", "validation_data_clean.rds"))
+
+ndvi_jjas_181920_ch <- readRDS(here::here("data", "ndvi_jjas_181920_ch.rds"))
+dry_predictions_lst <- readRDS(here::here("data", "dry_predictions_lst.rds"))
+
+#add ndvi to dry predictions
+dry_predictions_lst_ndvi <- dry_predictions_lst |>
+  left_join(
+    ndvi_jjas_181920_ch |> mutate(lat = round(lat, 4), lon = round(lon, 4)),
+    by = c("lat", "lon", "date")
+  )
+
+#prepare validation data
+pcwd_threshold <- 55
+
+val_wet_days <- validation_data_clean |>
+  group_by(date) |>
+  summarise(mean_pcwd = mean(pcwd_mm, na.rm = TRUE)) |>
+  filter(mean_pcwd <= pcwd_threshold) |>
+  pull(date)
+
+val_data <- validation_data_clean |>
+  filter(date %in% val_wet_days) |>
+  dplyr::select(lst_kelvin, elevation, land_cover_type, tot_ssrd, mean_t2m, rin, mean_d2m) |>
+  mutate(land_cover_type = factor(land_cover_type)) |>
+  drop_na() |>
+  filter(!land_cover_type %in% c(11,17))
+```
+
+## Temporal cross-validation of the random forest model
+
+```{r}
+# evaluate
+set.seed(42) # for reproducibility
+predictions1 <- rf_fit |>
+  predict(val_data) |>
+  bind_cols(val_data)
+
+#evaluate without LC type "Urban and Built-Up Land"
+val_data_no_urban <- val_data |>
+  filter(land_cover_type != 13)
+
+set.seed(42) # for reproducibility
+predictions2 <- rf_fit |>
+  predict(val_data_no_urban) |>
+  bind_cols(val_data_no_urban)
+
+metrics(predictions1, truth = lst_kelvin, estimate = .pred)
+metrics(predictions2, truth = lst_kelvin, estimate = .pred)
+```
+
+Repeated validation runs result in an R^2 of 0.65 to 0.7, which is solid. Let's see which predictor is the most important:
+
+```{r}
+set.seed(42)
+rf_fit |>
+  extract_fit_parsnip() |>
+  vip::vip()
+```
+
+Air temperature is by far the most important predictor. This is not optimal, since air temperature is the only one of the predictors that is influenced by LST. However, it was a result that could be expected. The really small influence of TRI is likely due to the low resolution, which doesn't capture much topographic variance. It is expected that the influence of TRI will rise significantly with higher resolution.
+
+
+```{r}
+predictions1 |>
+  dplyr::mutate(residual = lst_kelvin - .pred) |>
+  ggplot(aes(x = .pred, y = residual)) +
+  geom_point(alpha = 0.1, size = 0.3, colour = "grey40") +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "firebrick") +
+  labs(title = "Residuals vs Predicted LST",
+       x = "Predicted LST [K]", y = "Residual [K]") +
+  theme_minimal()
+
+# distribution of residuals
+predictions2 |>
+  dplyr::mutate(residual = lst_kelvin - .pred) |>
+  ggplot(aes(x = residual)) +
+  geom_histogram(bins = 50, fill = "steelblue", alpha = 0.8) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "firebrick") +
+  labs(title = "Distribution of residuals",
+       x = "Residual [K]", y = "n") +
+  theme_minimal()
+```
+
+The model seems to have negligible bias. Residuals are centered around 0 and are distributed along a Gaussian bell curve. 
+
+## Physical validation by comparison with NDVI
+
+```{r}
+dry_predictions_lst_ndvi |>
+  ggplot(aes(x = ndvi, y = lst_delta_smooth)) +
+  geom_point(alpha = 0.1, size = 0.3, colour = "grey40") +
+  geom_smooth(method = "lm", colour = "firebrick") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  coord_cartesian(ylim = c(-10, 10)) +
+  labs(title = "NDVI vs ΔLST",
+       x = "NDVI", y = "ΔLST [K]") +
+  theme_minimal()
+
+cor.test(dry_predictions_lst_ndvi$ndvi, 
+         dry_predictions_lst_ndvi$lst_delta_smooth,
+         method = "spearman",
+         use = "complete.obs")
+
+cor.test(dry_predictions_lst_ndvi$ndvi, 
+         dry_predictions_lst_ndvi$lst_delta_smooth,
+         method = "pearson",
+         use = "complete.obs")
+```
+
+There is a weak negative correlation between dLST and NDVI.
+

@@ -1,4 +1,4 @@
-# ---another physical validation: check correlation with ndvi---
+# ---physical validation: check correlation with ndvi---
 
 library(ggplot2)
 library(here)
@@ -29,7 +29,7 @@ lc_names <- c(
   "17" = "Water Bodies" # this should maybe be masked
 )
 
-dry_predictions_ndvi |>
+dry_predictions_lst_ndvi |>
   mutate(land_cover_name = lc_names[as.character(land_cover_type)]) |>
   ggplot(aes(x = ndvi, y = lst_delta_smooth)) +
   geom_point(alpha = 0.1, size = 0.3, colour = "grey40") +
@@ -40,7 +40,7 @@ dry_predictions_ndvi |>
        x = "NDVI", y = "ΔLST [K]") +
   theme_minimal()
 
-dry_predictions_ndvi |>
+dry_predictions_lst_ndvi |>
   ggplot(aes(x = ndvi, y = lst_delta_smooth)) +
   geom_point(alpha = 0.1, size = 0.3, colour = "grey40") +
   geom_smooth(method = "lm", colour = "firebrick") +

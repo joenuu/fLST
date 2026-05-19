@@ -1,0 +1,187 @@
+---
+title: "dLST depending on various predictors"
+author: "Jonathan Lanz"
+date: "2026-05-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE, 
+                      fig.path = here::here("fig/"), 
+                      dev = "png", 
+                      dpi = 300
+)
+```
+
+
+
+```{r, include=FALSE}
+# load libraries and functions
+library(ggplot2)
+library(here)
+library(scico)
+library(lubridate)
+library(cowplot)
+library(dplyr)
+source(here::here("R", "get_lst_plot.R"))
+source(here::here("R", "get_stats_label.R")) # is executed inside get_lst_plot
+
+# load data
+model_data_clean <- readRDS(here::here("data", "model_data_clean.rds")) |>
+  filter(!land_cover_type %in% c(11,17))
+twi_ch <- readRDS(here::here("data", "twi_ch.rds"))
+spatial_predictions_lst <- readRDS(here::here("data", "spatial_predictions_lst.rds")) |>
+  mutate(lat = round(lat, 4), lon = round(lon, 4)) |>
+  left_join(twi_ch |> mutate(lat = round(lat, 4), lon = round(lon, 4)),
+    by = c("lat", "lon"))
+dry_predictions_lst <- readRDS(here::here("data", "dry_predictions_lst.rds")) |>
+  mutate(lat = round(lat, 4), lon = round(lon, 4)) |>
+  left_join(twi_ch |> mutate(lat = round(lat, 4), lon = round(lon, 4)),
+    by = c("lat", "lon"))
+wet_days <- readRDS(here::here("data", "wet_days.rds"))
+
+lc_names <- c(
+  "1"  = "Evergreen Needleleaf Forest",
+  "4"  = "Deciduous Broadleaf Forest",
+  "5"  = "Mixed Forest",
+  "8"  = "Woody Savanna",
+  "9"  = "Savanna",
+  "10" = "Grassland",
+  "11" = "Permanent Wetland",
+  "12" = "Cropland",
+  "13" = "Urban and Built-up Land",
+  "14" = "Cropland & Natural Vegetation",
+  "16" = "Sand, Rock, Soil",
+  "17" = "Water Bodies"
+)
+```
+
+
+## dLST depending on land cover types
+The following table show the mean dLST over the entire study time for each land cover type (excluded: 11 "Permanent Wetlands" and 17 "Water Bodies")
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+# --- deltaLST depending on land cover types
+lst_delta_lc_types <- dry_predictions_lst |>
+  mutate(land_cover_name = lc_names[as.character(land_cover_type)]) |>
+  group_by(land_cover_name) |>
+  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE),
+             n          = n()) |>
+  arrange(desc(mean_delta))
+
+lst_delta_lc_types
+```
+For almost all land cover types, dLST is systematically positive, for most even with 1 K or more. 
+"Sand, Rock and Soil" is the only one to have a negative dLST, meaning that our appoach does not work for this LC type. This is no surprise: When the land is covered by sand, rock or soil, it means that no or little vegetation is present. LST is highly influenced by plants, and ultimately, plant water stress and thus plant health, is the motivation of this project.
+Below, a boxplot visualizing the dlST distribution across LC types is displayed.
+
+```{r dlst_across_lc_types, message=FALSE, warning=FALSE, echo=FALSE}
+dry_predictions_lst |>
+  mutate(land_cover_name = lc_names[as.character(land_cover_type)]) |>
+  ggplot(aes(x = reorder(land_cover_name, lst_delta_smooth, FUN = median), 
+             y = lst_delta_smooth)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7, outlier.size = 0.3) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "firebrick") +
+  labs(title = "ΔLST by land cover type",
+       x = NULL, y = "ΔLST [K]") +
+  theme_minimal()
+```
+
+
+
+
+
+## dLST depending on elevation
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+dry_predictions_lst |>
+  mutate(elevation_band = cut(elevation,
+                              breaks = c(0, 500, 1000, 1500, 2000, Inf),
+                              labels = c("0-500m", "501-1000m", "1001-1500m", "1501-2000m", ">2000m"))) |>
+  group_by(elevation_band) |>
+  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE), 
+             n          = n())
+```
+
+This does not show a significant dependence of height. The negative value for the lowest elevation band could be explained with a small data load there. The same is true for the highest elevation band, plus the fact that there might be more "Sand, Rock and Soil" land cover type.
+
+```{r dlst_across_elevation_bands, message=FALSE, warning=FALSE, echo=FALSE}
+model_data_clean |>
+  dplyr::distinct(lat, lon, .keep_all = TRUE) |>
+  mutate(elevation_band = cut(elevation,
+                              breaks = c(-Inf, 500, 1000, 1500, 2000, Inf),
+                              labels = c("0-500m", "500-1000m", "1000-1500m", "1500-2000m", ">2000m"))) |>
+  group_by(elevation_band) |>
+  summarise(n = n()) |>
+  ggplot(aes(x = elevation_band, y = n)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  labs(title = "Distribution of pixels by elevation band",
+       x = "Elevation band", y = "Number of pixels") +
+  theme_minimal()
+```
+
+
+## dLST depending on Topographic radiation index
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+dry_predictions_lst |>
+  mutate(rin_band = cut(rin,
+                        breaks = c(-Inf, 0.8, 0.9, 1.0, 1.1, 1.2, Inf),
+                        labels = c("<0.8", "0.8-0.9", "0.9-1.0", "1.0-1.1", "1.1-1.2", ">1.2"))) |>
+  group_by(rin_band) |>
+  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE),
+             n          = n())
+```
+
+Here, it es evenly hard to see a trend. 
+
+```{r, dlst_across_tri_values}
+model_data_clean |>
+  dplyr::distinct(lat, lon, .keep_all = TRUE) |>
+  mutate(rin_band = cut(rin,
+                        breaks = c(0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.7),
+                        labels = c("0.4-0.6", "0.6-0.8", "0.8-1.0", "1.0-1.2", "1.2-1.4", "1.4-1.7"))) |>
+  group_by(rin_band) |>
+  summarise(n = n()) |>
+  ggplot(aes(x = rin_band, y = n)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  labs(title = "Distribution of pixels by RIN band",
+       x = "RIN", y = "Number of pixels") +
+  theme_minimal()
+```
+
+# Correlations
+
+It can be seen that correlations are weak. 
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+cor.test(dry_predictions_lst$lst_delta_smooth, dry_predictions_lst$rin)
+
+cor.test(dry_predictions_lst$lst_delta_smooth, dry_predictions_lst$elevation)
+```
+
+## dLST depending on Topographic Wetness Index
+
+```{r dlst_across_twi_values, message=FALSE, warning=FALSE, echo=FALSE}
+range(spatial_predictions_lst$twi, na.rm = TRUE)
+
+dry_predictions_lst |>
+  mutate(twi_band = cut(twi,
+                        breaks = c(-Inf, 8, 12, 16, 20, Inf),
+                        labels = c("<8", "8-12", "12-16", "16-20", ">20"))) |>
+  dplyr::filter(!is.na(twi_band)) |>
+  group_by(twi_band) |>
+  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE),
+             n          = n())
+
+
+```
+
+
+
+
+
+
+
+

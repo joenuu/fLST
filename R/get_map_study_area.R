@@ -1,6 +1,6 @@
 # a function to plot a satellite map of the study area
 
-# for CH: do it with lonmin = 6.0, latmin = 46.4, lonmwx = 7.5, latmax = 47.1
+# for CH: do it with lonmin = 6.0, latmin = 46.4, lonmax = 7.5, latmax = 47.1
 map_study_area <- get_map_study_area(6.0, 46.4, 7.5, 47.1)
 
 get_map_study_area <- function(lonmin, latmin, lonmax, latmax){
@@ -18,7 +18,7 @@ ext  <- terra::ext(bbox)
 tiles <- get_tiles(
   x        = ext,
   provider = "Esri.WorldImagery",
-  zoom     = 9, # 5 to do it fast. for final version, minimum is zoom = 12
+  zoom     = 12, # 5 to do it fast. for final version, minimum is zoom = 12
   crop     = TRUE,
   project  = FALSE
 )
@@ -74,3 +74,6 @@ final_map <- ggdraw(main_map) +
 
 return(final_map)
 }
+
+map_study_area <- get_map_study_area(6.0, 46.4, 7.5, 47.1)
+map_study_area

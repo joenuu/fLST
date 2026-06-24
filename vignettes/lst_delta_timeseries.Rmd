@@ -23,10 +23,13 @@ library(scico)
 library(lubridate)
 library(cowplot)
 library(dplyr)
+library(tidyr)
+library(terra)
 source(here::here("R", "get_lst_plot.R"))
 source(here::here("R", "get_stats_label.R"))# is executed inside get_lst_plot
 
 # load data
+lst_ref <- terra::rast(here::here("data", "lst_ref.rds"))
 model_data_clean <- readRDS(here::here("data", "model_data_clean.rds")) |>
   filter(!land_cover_type %in% c(11,17))
 spatial_predictions_lst <- readRDS(here::here("data", "spatial_predictions_lst.rds"))
@@ -66,8 +69,6 @@ driest_pixel_data |>
 driest_pixel_data |>
   ggplot(aes(x = date)) +
   geom_line(aes(y = lst_delta_smooth), colour = "firebrick") +
-  geom_smooth(aes(y = lst_delta_smooth), method = "lm", colour = "darkred", 
-            linetype = "dotted", linewidth = 0.5, se = FALSE) +
   geom_line(aes(y = pcwd_mm / 20), colour = "steelblue", linetype = "dashed") +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
   scale_y_continuous(
@@ -95,9 +96,9 @@ spatial_predictions_lst |>
     mean_pcwd  = mean(pcwd_mm, na.rm = TRUE)
   ) |>
   ggplot(aes(x = date)) +
-  geom_line(aes(y = mean_delta), colour = "firebrick") +
-  geom_smooth(aes(y = mean_delta), method = "lm", colour = "firebrick", 
-            linetype = "dotted", linewidth = 0.5, se = FALSE) +
+  geom_line(aes(y = mean_delta), colour = "firebrick", alpha = 0.3) +
+  geom_smooth(aes(y = mean_delta), method = "loess", span = 0.2,
+              se = FALSE, colour = "firebrick", linewidth = 0.8) +
   geom_line(aes(y = mean_pcwd / 20), colour = "steelblue", linetype = "dashed") +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
   scale_y_continuous(
@@ -112,30 +113,36 @@ spatial_predictions_lst |>
 ```
 This graphs shows quite well that LST reacts faster to condition changes than PCWD. The advantage of (P)CWD is that it shows the cumulation and thus the severity of drought better. LST has a higher variance and, although there is a rising trend, fails to indicate the cumulation aspect. 
 
-## Timeline of mean dLST and NDVI across entire study area
 
-```{r dlst_timeline_ndvi, message=FALSE, warning=FALSE, echo=FALSE}
+## Timeline of mean dLST and PCWD on the regions with high water stress (dLST > 3 K)
+
+```{r dlst_timeline_pcwd_high_stress_regions}
+high_stress_pixels <- dry_predictions_lst |>
+  group_by(lat, lon) |>
+  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE), .groups = "drop") |>
+  dplyr::filter(mean_delta > 3)
+
 spatial_predictions_lst |>
-  mutate(lat = round(lat, 4), lon = round(lon, 4)) |>
-  left_join(
-    ndvi_jjas_181920_ch |> mutate(lat = round(lat, 4), lon = round(lon, 4)),
-    by = c("lat", "lon", "date")
-  ) |>
+  dplyr::filter(lat %in% high_stress_pixels$lat & lon %in% high_stress_pixels$lon) |>
+  left_join(model_data_clean |> dplyr::select(lat, lon, date, pcwd_mm),
+            by = c("lat", "lon", "date")) |>
   group_by(date) |>
   summarise(
     mean_delta = mean(lst_delta_smooth, na.rm = TRUE),
-    mean_ndvi  = mean(ndvi, na.rm = TRUE)
+    mean_pcwd  = mean(pcwd_mm, na.rm = TRUE)
   ) |>
   ggplot(aes(x = date)) +
-  geom_line(aes(y = mean_delta), colour = "firebrick") +
-  geom_line(aes(y = (mean_ndvi - 0.5) * 20), colour = "darkgreen", linetype = "dashed") +
+  geom_line(aes(y = mean_delta), colour = "firebrick", alpha = 0.3) +
+  geom_smooth(aes(y = mean_delta), method = "loess", span = 0.2,
+              se = FALSE, colour = "firebrick", linewidth = 0.8) +
+  geom_line(aes(y = mean_pcwd / 20), colour = "steelblue", linetype = "dashed") +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
   scale_y_continuous(
     name     = "Mean ΔLST [K]",
-    sec.axis = sec_axis(~ . / 20 + 0.5, name = "Mean NDVI")
+    sec.axis = sec_axis(~ . * 20, name = "Mean PCWD [mm]")
   ) +
   facet_wrap(~lubridate::year(date), ncol = 1, scales = "free_x") +
-  labs(title = "Mean ΔLST and NDVI across study area",
+  labs(title = "ΔLST and PCWD for high stress pixels (mean ΔLST > 3K)",
        x = "Date") +
   theme_minimal()
 ```

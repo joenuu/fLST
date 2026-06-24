@@ -23,6 +23,7 @@ library(ggplot2)
 library(here)
 library(scico)
 library(lubridate)
+library(tidyverse)
 library(cowplot)
 library(dplyr)
 source(here::here("R", "get_lst_plot.R"))
@@ -37,6 +38,10 @@ spatial_predictions_lst <- readRDS(here::here("data", "spatial_predictions_lst.r
   left_join(twi_ch |> mutate(lat = round(lat, 4), lon = round(lon, 4)),
     by = c("lat", "lon"))
 dry_predictions_lst <- readRDS(here::here("data", "dry_predictions_lst.rds")) |>
+  mutate(lat = round(lat, 4), lon = round(lon, 4)) |>
+  left_join(twi_ch |> mutate(lat = round(lat, 4), lon = round(lon, 4)),
+    by = c("lat", "lon"))
+wet_predictions_lst <- readRDS(here::here("data", "moist_predictions_lst.rds")) |>
   mutate(lat = round(lat, 4), lon = round(lon, 4)) |>
   left_join(twi_ch |> mutate(lat = round(lat, 4), lon = round(lon, 4)),
     by = c("lat", "lon"))
@@ -60,18 +65,51 @@ lc_names <- c(
 
 
 ## dLST depending on land cover types
-The following table show the mean dLST over the entire study time for each land cover type (excluded: 11 "Permanent Wetlands" and 17 "Water Bodies")
+The following table show the mean dLST over the entire study time for each land cover type (excluded: 11 "Permanent Wetlands" and 17 "Water Bodies"), first on dry days, then on wet days.
 
-```{r, message=FALSE, warning=FALSE, echo=FALSE}
+```{r lc_type_dlst, message=FALSE, warning=FALSE, echo=FALSE}
 # --- deltaLST depending on land cover types
-lst_delta_lc_types <- dry_predictions_lst |>
+lst_delta_lc_types_dry <- dry_predictions_lst |>
   mutate(land_cover_name = lc_names[as.character(land_cover_type)]) |>
   group_by(land_cover_name) |>
-  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE),
+  summarise(mean_delta = mean(lst_delta, na.rm = TRUE),
              n          = n()) |>
   arrange(desc(mean_delta))
 
-lst_delta_lc_types
+lst_delta_lc_types_dry
+
+lst_delta_lc_types_wet <- wet_predictions_lst |>
+  mutate(land_cover_name = lc_names[as.character(land_cover_type)]) |>
+  group_by(land_cover_name) |>
+  summarise(mean_delta = mean(lst_delta, na.rm = TRUE),
+             n          = n()) |>
+  arrange(desc(mean_delta))
+
+lst_delta_lc_types_wet
+
+p_dry <- lst_delta_lc_types_dry |>
+  mutate(land_cover_name = fct_reorder(land_cover_name, mean_delta)) |>
+  ggplot(aes(x = mean_delta, y = land_cover_name, fill = mean_delta)) +
+  geom_col(width = 0.7) +
+  geom_vline(xintercept = 0, linewidth = 0.4, color = "grey30") +
+  scale_fill_scico(palette = "vik", midpoint = 0) +
+  scale_x_continuous(limits = c(-2.5, 2.5)) +
+  labs(title = "Dry days", x = "Mean ΔLST [K]", y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+p_wet <- lst_delta_lc_types_wet |>
+  mutate(land_cover_name = fct_reorder(land_cover_name, mean_delta)) |>
+  ggplot(aes(x = mean_delta, y = land_cover_name, fill = mean_delta)) +
+  geom_col(width = 0.7) +
+  geom_vline(xintercept = 0, linewidth = 0.4, color = "grey30") +
+  scale_fill_scico(palette = "vik", midpoint = 0) +
+  scale_x_continuous(limits = c(-2.5, 2.5)) +
+  labs(title = "Moist days", x = "Mean ΔLST [K]", y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+plot_grid(p_dry, p_wet, ncol = 2)
 ```
 For almost all land cover types, dLST is systematically positive, for most even with 1 K or more. 
 "Sand, Rock and Soil" is the only one to have a negative dLST, meaning that our appoach does not work for this LC type. This is no surprise: When the land is covered by sand, rock or soil, it means that no or little vegetation is present. LST is highly influenced by plants, and ultimately, plant water stress and thus plant health, is the motivation of this project.
@@ -80,7 +118,7 @@ Below, a boxplot visualizing the dlST distribution across LC types is displayed.
 ```{r dlst_across_lc_types, message=FALSE, warning=FALSE, echo=FALSE}
 dry_predictions_lst |>
   mutate(land_cover_name = lc_names[as.character(land_cover_type)]) |>
-  ggplot(aes(x = reorder(land_cover_name, lst_delta_smooth, FUN = median), 
+  ggplot(aes(x = reorder(land_cover_name, lst_delta, FUN = median), 
              y = lst_delta_smooth)) +
   geom_boxplot(fill = "steelblue", alpha = 0.7, outlier.size = 0.3) +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "firebrick") +
@@ -101,7 +139,7 @@ dry_predictions_lst |>
                               breaks = c(0, 500, 1000, 1500, 2000, Inf),
                               labels = c("0-500m", "501-1000m", "1001-1500m", "1501-2000m", ">2000m"))) |>
   group_by(elevation_band) |>
-  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE), 
+  summarise(mean_delta = mean(lst_delta, na.rm = TRUE), 
              n          = n())
 ```
 
@@ -131,7 +169,7 @@ dry_predictions_lst |>
                         breaks = c(-Inf, 0.8, 0.9, 1.0, 1.1, 1.2, Inf),
                         labels = c("<0.8", "0.8-0.9", "0.9-1.0", "1.0-1.1", "1.1-1.2", ">1.2"))) |>
   group_by(rin_band) |>
-  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE),
+  summarise(mean_delta = mean(lst_delta, na.rm = TRUE),
              n          = n())
 ```
 
@@ -156,9 +194,9 @@ model_data_clean |>
 
 It can be seen that correlations are weak. 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
-cor.test(dry_predictions_lst$lst_delta_smooth, dry_predictions_lst$rin)
+cor.test(dry_predictions_lst$lst_delta, dry_predictions_lst$rin)
 
-cor.test(dry_predictions_lst$lst_delta_smooth, dry_predictions_lst$elevation)
+cor.test(dry_predictions_lst$lst_delta, dry_predictions_lst$elevation)
 ```
 
 ## dLST depending on Topographic Wetness Index
@@ -172,7 +210,7 @@ dry_predictions_lst |>
                         labels = c("<8", "8-12", "12-16", "16-20", ">20"))) |>
   dplyr::filter(!is.na(twi_band)) |>
   group_by(twi_band) |>
-  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE),
+  summarise(mean_delta = mean(lst_delta, na.rm = TRUE),
              n          = n())
 
 

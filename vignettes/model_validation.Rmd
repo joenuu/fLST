@@ -79,6 +79,12 @@ predictions2 <- rf_fit |>
 
 metrics(predictions1, truth = lst_kelvin, estimate = .pred)
 metrics(predictions2, truth = lst_kelvin, estimate = .pred)
+
+predictions1 |>
+  summarise(bias = mean(.pred - lst_kelvin, na.rm = TRUE))
+
+predictions2 |>
+  summarise(bias = mean(.pred - lst_kelvin, na.rm = TRUE))
 ```
 
 Repeated validation runs result in an R^2 of 0.65 to 0.7, which is solid. Let's see which predictor is the most important:
@@ -90,7 +96,7 @@ rf_fit |>
   vip::vip()
 ```
 
-Air temperature is by far the most important predictor. This is not optimal, since air temperature is the only one of the predictors that is influenced by LST. However, it was a result that could be expected. The really small influence of TRI is likely due to the low resolution, which doesn't capture much topographic variance. It is expected that the influence of TRI will rise significantly with higher resolution.
+Air temperature is by far the most important predictor. This is not optimal, since air temperature is the only one of the predictors that is reversely influenced by LST. However, it was a result that could be expected. The really small influence of TRI is likely due to the low resolution, which doesn't capture much topographic variance. It is expected that the influence of TRI will rise significantly with higher resolution.
 
 
 ```{r}
@@ -116,12 +122,24 @@ predictions2 |>
 
 The model seems to have negligible bias. Residuals are centered around 0 and are distributed along a Gaussian bell curve. 
 
-## Physical validation by comparison with NDVI
+## Physical comparison with NDVI
 
 ```{r}
-dry_predictions_lst_ndvi |>
-  ggplot(aes(x = ndvi, y = lst_delta_smooth)) +
-  geom_point(alpha = 0.1, size = 0.3, colour = "grey40") +
+df_plot <- dry_predictions_lst_ndvi |>
+  tidyr::drop_na(ndvi, lst_delta)
+
+dens <- MASS::kde2d(df_plot$ndvi, df_plot$lst_delta, n = 200)
+ix <- findInterval(df_plot$ndvi, dens$x)
+iy <- findInterval(df_plot$lst_delta, dens$y)
+df_plot$density <- dens$z[cbind(ix, iy)]
+
+df_plot |>
+  ggplot(aes(x = ndvi, y = lst_delta)) +
+  geom_point(aes(colour = density), size = 0.4, alpha = 0.6) +
+  scale_colour_gradientn(
+    colours = c("grey70", "navy", "blue", "cyan", "yellow", "red", "darkred"),
+    guide = "none"
+  ) +
   geom_smooth(method = "lm", colour = "firebrick") +
   geom_hline(yintercept = 0, linetype = "dashed") +
   coord_cartesian(ylim = c(-10, 10)) +
@@ -130,12 +148,12 @@ dry_predictions_lst_ndvi |>
   theme_minimal()
 
 cor.test(dry_predictions_lst_ndvi$ndvi, 
-         dry_predictions_lst_ndvi$lst_delta_smooth,
+         dry_predictions_lst_ndvi$lst_delta,
          method = "spearman",
          use = "complete.obs")
 
 cor.test(dry_predictions_lst_ndvi$ndvi, 
-         dry_predictions_lst_ndvi$lst_delta_smooth,
+         dry_predictions_lst_ndvi$lst_delta,
          method = "pearson",
          use = "complete.obs")
 ```

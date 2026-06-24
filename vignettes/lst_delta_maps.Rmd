@@ -30,6 +30,7 @@ model_data_clean <- readRDS(here::here("data", "model_data_clean.rds")) |>
   filter(!land_cover_type %in% c(11,17))
 spatial_predictions_lst <- readRDS(here::here("data", "spatial_predictions_lst.rds"))
 dry_predictions_lst <- readRDS(here::here("data", "dry_predictions_lst.rds"))
+moist_predictions_lst <- readRDS(here::here("data", "moist_predictions_lst.rds"))
 
 lc_names <- c(
   "1"  = "Evergreen Needleleaf Forest",
@@ -71,35 +72,38 @@ all_predictions_lst <- model_data_clean |>
 
 dlst1 <- all_predictions_lst |>
   filter(date == "2018-09-20") |>
-  ggplot(aes(x = lon, y = lat, fill = lst_delta_smooth)) +
+  ggplot(aes(x = lon, y = lat, fill = lst_delta)) +
   geom_raster() +
-  scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
+  scale_fill_scico(palette = "vik", midpoint = 0, limits = c(-5, 15), 
+                 oob = scales::squish, na.value = "grey90") +
   coord_equal() +
   facet_wrap(~date, ncol = 4) +
-  labs(title = "ΔLST (LSTact − LSTpot)",
-       fill = "ΔT") +
+  labs(title = "ΔLST (LSTobs − LSTpot)",
+       fill = "ΔLST") +
   theme_minimal()
 
 dlst2 <- all_predictions_lst |>
   filter(date == "2019-07-25") |>
-  ggplot(aes(x = lon, y = lat, fill = lst_delta_smooth)) +
+  ggplot(aes(x = lon, y = lat, fill = lst_delta)) +
   geom_raster() +
-  scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
+  scale_fill_scico(palette = "vik", midpoint = 0, limits = c(-5, 15), 
+                 oob = scales::squish, na.value = "grey90") +
   coord_equal() +
   facet_wrap(~date, ncol = 4) +
-  labs(title = "ΔLST (LSTact − LSTpot)",
-       fill = "ΔT") +
+  labs(title = "ΔLST (LSTobs − LSTpot)",
+       fill = "ΔLST") +
   theme_minimal()
 
 dlst3 <- all_predictions_lst |>
   filter(date == "2020-09-18") |>
-  ggplot(aes(x = lon, y = lat, fill = lst_delta_smooth)) +
+  ggplot(aes(x = lon, y = lat, fill = lst_delta)) +
   geom_raster() +
-  scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
+  scale_fill_scico(palette = "vik", midpoint = 0, limits = c(-5, 15), 
+                 oob = scales::squish, na.value = "grey90") +
   coord_equal() +
   facet_wrap(~date, ncol = 4) +
-  labs(title = "ΔLST (LSTact − LSTpot)",
-       fill = "ΔT") +
+  labs(title = "ΔLST (LSTobs − LSTpot)",
+       fill = "ΔLST") +
   theme_minimal()
 
 # combine
@@ -118,20 +122,32 @@ combined_dlst
 The following map shows the mean dLST over the entire study period, meaning the summer months June, July, August and September of 2018, 2019 and 2020.
 
 ```{r map_mean_dlst,  message=FALSE, warning=FALSE, echo=FALSE}
-dry_predictions_lst |>
+dlst_mean <- dry_predictions_lst |>
   filter(!land_cover_type %in% c(11, 17)) |>
   group_by(lat, lon) |>
-  summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE)) |>
+  summarise(mean_delta = mean(lst_delta, na.rm = TRUE)) |>
   ggplot(aes(x = lon, y = lat, fill = mean_delta)) +
   geom_raster() +
-  scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
+  scale_fill_scico(palette = "vik", midpoint = 0, limits = c(-5, 15), 
+                   na.value = "grey90") +
   coord_equal() +
-  labs(title = "Mean ΔLST on dry days (LSTact − LSTpot)",
-       fill = "Δ [K]") +
+  labs(title = "Mean ΔLST on dry days",
+       fill = "ΔLST [K]") +
   theme_minimal()
-```
 
-Note that for both calculations, LSTact was used to compute dLST instead of LSTpot (i.e., lst_delta_smooth). This cancels out systematic errors of the data, hence also the ending "smooth".
+dlst_mean
+
+combined_dlst_all <- plot_grid(
+  dlst1, dlst2, dlst3, dlst_mean,
+  ncol = 2,
+  labels = letters[1:4],
+  label_size = 11,
+  label_fontface = "plain",
+  rel_widths = c(1, 1, 1)
+)
+
+combined_dlst_all
+```
 
 What stands out are the blue pixels on the south shore of the Lake Neuchâtel, Lake Murten and Lake Biel, representing a negative dLST. A comparison with the map displaying the land cover types does not indicate a possible reason.
 
@@ -181,18 +197,18 @@ plots <- map(names(pcwd_bands), \(band_name) {
       pcwd_mm <= limits[2]
     ) |>
     group_by(lat, lon) |>
-    summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE), .groups = "drop") |>
+    summarise(mean_delta = mean(lst_delta, na.rm = TRUE), .groups = "drop") |>
     ggplot(aes(x = lon, y = lat, fill = mean_delta)) +
     geom_raster() +
     scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90",
                      limits = c(-5, 10)) +  # fixed scale for comparability
     coord_equal() +
-    labs(title = band_name, fill = "Δ [K]") +
+    labs(title = band_name, fill = "ΔLST [K]") +
     theme_minimal()
 })
 
 plot_grid(plotlist = plots, ncol = 2,
-          labels = c("(a)", "(b)", "(c)"),
+          labels = letters[1:3],
           label_size = ,
           label_fontface = "plain")
 ```
@@ -215,22 +231,96 @@ plots <- map(c("PCWD 55-100", "PCWD 101-200", "PCWD >200"), \(band) {
     dplyr::filter(date %in% dates_in_band,
                   !land_cover_type %in% c(11, 17)) |>
     group_by(lat, lon) |>
-    summarise(mean_delta = mean(lst_delta_smooth, na.rm = TRUE), .groups = "drop") |>
+    summarise(mean_delta = mean(lst_delta, na.rm = TRUE), .groups = "drop") |>
     ggplot(aes(x = lon, y = lat, fill = mean_delta)) +
     geom_raster() +
     scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90",
                      limits = c(-5, 10)) +
     coord_equal() +
-    labs(title = band, fill = "Δ [K]") +
+    labs(title = band, fill = "ΔLST [K]") +
     theme_minimal()
 })
 
-p <- plot_grid(plotlist = plots, ncol = 1,
-               labels = c("(a)", "(b)", "(c)"),
+p <- plot_grid(plotlist = plots, ncol = 2,
+               labels = letters[1:3],
                label_size = 11,
                label_fontface = "plain")
 
 p
 ```
 
+Finally, let's do the same for moist conditions.
+
+```{r map_moist_days}
+# get wettest days
+model_data_clean |>
+  group_by(date) |>
+  summarise(mean_pcwd = mean(pcwd_mm, na.rm = TRUE)) |>
+  mutate(year = lubridate::year(date)) |>
+  group_by(year) |>
+  slice_min(mean_pcwd, n = 1)
+
+dlst1_moist <- all_predictions_lst |>
+  filter(date == "2018-06-13") |>
+  ggplot(aes(x = lon, y = lat, fill = lst_delta)) +
+  geom_raster() +
+  scale_fill_scico(palette = "vik", midpoint = 0, limits = c(-3, 3), 
+                 oob = scales::squish, na.value = "grey90") +
+  coord_equal() +
+  facet_wrap(~date, ncol = 4) +
+  labs(title = "ΔLST (LSTobs − LSTpot)",
+       fill = "ΔLST") +
+  theme_minimal()
+
+dlst2_moist <- all_predictions_lst |>
+  filter(date == "2019-06-12") |>
+  ggplot(aes(x = lon, y = lat, fill = lst_delta)) +
+  geom_raster() +
+  scale_fill_scico(palette = "vik", midpoint = 0, limits = c(-3, 3), 
+                 oob = scales::squish, na.value = "grey90") +
+  coord_equal() +
+  facet_wrap(~date, ncol = 4) +
+  labs(title = "ΔLST (LSTobs − LSTpot)",
+       fill = "ΔLST") +
+  theme_minimal()
+
+dlst3_moist <- all_predictions_lst |>
+  filter(date == "2020-06-19") |>
+  ggplot(aes(x = lon, y = lat, fill = lst_delta)) +
+  geom_raster() +
+  scale_fill_scico(palette = "vik", midpoint = 0, limits = c(-3, 3), 
+                 oob = scales::squish, na.value = "grey90") +
+  coord_equal() +
+  facet_wrap(~date, ncol = 4) +
+  labs(title = "ΔLST (LSTobs − LSTpot)",
+       fill = "ΔLST") +
+  theme_minimal()
+
+dlst_moist_mean <- moist_predictions_lst |>
+  filter(!land_cover_type %in% c(11, 17)) |>
+  group_by(lat, lon) |>
+  summarise(mean_delta = mean(lst_delta, na.rm = TRUE)) |>
+  ggplot(aes(x = lon, y = lat, fill = mean_delta)) +
+  geom_raster() +
+  scale_fill_scico(palette = "vik", midpoint = 0, limits = c(-3, 3),
+                   na.value = "grey90",) +
+  coord_equal() +
+  labs(title = "Mean ΔLST on moist days",
+       fill = "ΔLST [K]") +
+  theme_minimal()
+
+dlst_moist_mean
+
+# combine
+combined_dlst_moist <- plot_grid(
+  dlst1_moist, dlst2_moist, dlst3_moist, dlst_moist_mean,
+  ncol = 2,
+  labels = letters[1:4],
+  label_size = 11,
+  label_fontface = "plain",
+  rel_widths = c(1, 1, 1))
+
+combined_dlst_moist
+
+```
 

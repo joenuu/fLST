@@ -1,4 +1,4 @@
-# --- more tangible plots ---
+
 library(ggplot2)
 library(here)
 library(scico)
@@ -26,7 +26,11 @@ dry_days <- all_predictions_lst |>
 dry_predictions_lst <- all_predictions_lst |>
   filter(date %in% dry_days)
 
+moist_predictions_lst <- all_predictions_lst |>
+  filter(!date %in% dry_days)
+
 saveRDS(dry_predictions_lst, here::here("data", "dry_predictions_lst.rds"))
+saveRDS(moist_predictions_lst, here::here("data", "moist_predictions_lst.rds"))
 
 
 

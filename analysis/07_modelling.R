@@ -16,14 +16,15 @@ glimpse(model_data_clean)
 
 #---first: get rid of "dry" days, i.e. days above a certain threshold---
 
-# plot pcwd data for visualization (also later in Rmd file)
+# plot pcwd data for visualization
 pcwd_plot <- get_pcwd_plot(here::here("data", "pcwd_jjas_181920_ch.rds"))
 pcwd_plot
 
-# define threshold at the local minimum
-pcwd_threshold <- 55 # keep in mind that this threshold might eventually change
 
-pcwd_plot +
+# define threshold at the local minimum
+pcwd_threshold <- 55
+
+pcwd_plot_with_thr <- pcwd_plot +
   geom_vline(xintercept = pcwd_threshold, colour = "firebrick",
              linetype = "dashed", linewidth = 0.8) +
   annotate("text", x = pcwd_threshold - 5, y = Inf,
@@ -32,6 +33,14 @@ pcwd_plot +
   annotate("text", x = pcwd_threshold + 120, y = Inf,
            label = "\"dry\" days", colour = "firebrick",
            hjust = 0, vjust = 1.5)
+
+ggsave(
+  filename = here::here("fig", "pcwd_plot.png"),
+  plot     = pcwd_plot_with_thr,
+  width    = 10,
+  height   = 7,
+  dpi      = 300
+)
 
 # get the wet data
 wet_days <- model_data_clean |>
@@ -132,7 +141,7 @@ spatial_predictions_lst <- rf_fit |>
   rename(lst_predicted = .pred) |>
   mutate(lst_delta = lst_kelvin - lst_predicted)
 
-# compute delta as LSTact - LSTpot
+# compute smoothed delta as LSTact - LSTpot
 spatial_predictions_lst <- spatial_predictions_lst |>
   left_join(spatial_predictions_lst_act |>
               dplyr::select(lat, lon, date, lst_act),

@@ -79,7 +79,7 @@ combined_lst_comparison_obs
 ```
 
 ## Plotting LSTact vs LSTpot
-The following scatterplots show the same with LSTact vs LSTobs.
+The following scatterplots show the same with LSTact vs LSTpot.
 
 ```{r lstact_lstpot_scatter,  message=FALSE, warning=FALSE, echo=FALSE}
 #---plotting LSTact vs LSTpot---
@@ -109,7 +109,7 @@ dry_plot_act <- make_lst_plot(dry_predictions_lst,
 combined_lst_comparison_act <- plot_grid(
   all_plot_act, moist_plot_act, dry_plot_act,
   ncol = 2,
-  labels = c("(a)", "(b)", "(c)"),
+  labels = letters[1:4],
   label_size = 11,
   label_fontface = "plain",
   rel_widths = c(1, 1, 1))
@@ -148,7 +148,7 @@ dry_plot_actvsobs <- make_lst_plot(dry_predictions_lst,
 combined_lst_comparison_actvsobs <- plot_grid(
   all_plot_actvsobs, moist_plot_actvsobs, dry_plot_actvsobs,
   ncol = 2,
-  labels = c("(a)", "(b)", "(c)"),
+  labels = letters[1:4],
   label_size = 11,
   label_fontface = "plain",
   rel_widths = c(1, 1, 1))
@@ -157,4 +157,28 @@ combined_lst_comparison_actvsobs
 ```
 
 It is evident that model performance is significantly better on wet days and systematically underpredicts LST on dry days. This is consistent with the expectations, since the model was trained only on wet days.
+
+The most important plots for my analysis are combined in the next plot.
+
+```{r, lstact_lstobs_lstpot_final_scatter}
+tight <- theme(plot.margin = margin(2, 2, 2, 2, unit = "pt")) # this was made by Claude
+
+combined_lst_comparison_final <- plot_grid(
+  all_plot_obs + tight, 
+  moist_plot_obs + tight, 
+  dry_plot_obs + tight, 
+  all_plot_actvsobs + tight,
+  ncol = 2,
+  labels = letters[1:4],
+  label_size = 11,
+  label_fontface = "plain",
+  align = "hv",
+  axis = "tblr")
+
+combined_lst_comparison_final
+
+```
+
+
+
 

@@ -4,6 +4,7 @@ library(scico)
 library(cowplot)
 library(purrr)
 library(dplyr)
+library(scales)
 
 model_data_clean <- readRDS(here::here("data", "model_data_clean.rds"))  |>
   filter(!land_cover_type %in% c(11,17))
@@ -36,9 +37,10 @@ for (i in seq_along(date_chunks)) {
 
     all_predictions_lst |>
       dplyr::filter(date == d) |>
-      ggplot(aes(x = lon, y = lat, fill = lst_delta_smooth)) +
+      ggplot(aes(x = lon, y = lat, fill = lst_delta)) +
       geom_raster() +
-      scale_fill_scico(palette = "vik", midpoint = 0, na.value = "grey90") +
+      scale_fill_scico(palette = "vik", midpoint = 0, limits = c(-10, 10),
+                       oob = scales::squish, na.value = "grey90") +
       coord_equal() +
       labs(title = paste0(d, " (", condition_label, ")"), fill = "ΔT") +
       theme_minimal() +

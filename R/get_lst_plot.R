@@ -33,10 +33,9 @@ make_lst_plot <- function(df, obs_col, pred_col, title_label, obs_label, pred_la
     ggplot2::geom_smooth(method = "lm", se = FALSE,          # regression line
                 colour = "red", linetype = "dashed", linewidth = 0.8) +
     ggplot2::annotate("text",
-             x = axis_lim[1] + 0.6 * diff(axis_lim),
-             y = axis_lim[1] + 0.05 * diff(axis_lim),
-             label = stats_label,
-             hjust = 0, vjust = 0, size = 3.2) +
+                      x = axis_lim[2], y = axis_lim[1],
+                      label = stats_label,
+                      hjust = 1, vjust = 0, size = 3) +
     ggplot2::coord_equal(xlim = axis_lim, ylim = axis_lim) +
     ggplot2::labs(title = title_label,
          x = obs_label,

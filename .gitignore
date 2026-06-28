@@ -13,6 +13,23 @@
 /t2m
 /pcwd
 
+# Large data files
+data/lst_jjas_1015_ch.csv
+data/ssrd_jjas_181920_ch.csv
+data/d2m_jjas_181920_ch.csv
+data/t2m_jjas_181920_ch.csv
+data/lst_jjas_181920_ch.csv
+data/ssrd_jjas_1015_ch.csv
+data/spatial_predictions_lst.rds
+data/pcwd_jjas_181920_ch.csv
+data/pcwd_jjas_1015_ch.csv
+data/dry_predictions_lst.rds
+data/model_data_clean.rds
+data/t2m_jjas_1015_ch.csv
+data/d2m_jjas_1015_ch.csv
+data/rf_fit.rds
+data/validation_data_clean.csv
+
 # User-specific files
 .Ruserdata
 

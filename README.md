@@ -9,19 +9,19 @@
 ### Description
 
 This is the project containing all data and code for my Bachelor thesis "Detecting water stress via land surface temperatures". 
-Land surface temperatures (LST) reflect climatic conditions at the land surface (air temperature, radiation), and surface properties. The clue is that they also reflect to what extent water vapour fluxes cool surfaces and that plants have a strong influence on them. Hence, the activity of plants and the degree to which they are water limited have an imprit on remotely sensed LST. The challenge is to disentangle this signal from (big) satellite data. If a solution is found, it will yield a novel approach for interpreting high resolution LST data for informing our understanding of vegetation water stress across space.
-Since a bachelor thesis is limited in time and scale, I will develop a model that estimates LST from meteorological and vegetational variables that can also be sensed from space. This should enable me to estimate the LST for moist surfaces. By comparing this with actual LST measurements, conclusions about water stress in the surface could be made. 
-The approach I will take aims to fill a research gap in this topic. By testing this on a relatively small scale, I will be able to make a statement about 1) the influence of LST on water stress and 2) if a model of this kind could work for broader research.
+Drought-induced plant water stress is difficult to monitor at meaningful spatial scales. While remote sensing offers insight into water availability in the uppermost part of the soil, it remains difficult to determine soil moisture in deeper soil horizons. Land surface temperature (LST), however, carries information about the entire rooting zone, since evapotranspiration — and thus evaporative cooling of the surface — is reduced when plants suffer from water stress. This characteristic is used in this study, conducted in Western Switzerland, where observed land surface temperatures are compared to modelled potential land surface temperatures, computed with a random forest model trained only on days where plant water availability is sufficient. The difference ΔLST between observed and potential land surface temperature then serves as a proxy for plant water stress.
+The approach was tested in an exploratory manner. It could be shown that ΔLST is larger under dry conditions, quantified using the potential cumulative water deficit (PCWD). Almost the entire study area shows a measurable ΔLST on dry days, while on moist days this effect is largely absent. Time series of ΔLST compared with PCWD also show promising correlations. These results suggest that the methodology used in this study may serve as a new approach to quantify plant water stress in the deeper rooting zone. Next steps would be to improve the spatial resolution and to validate ΔLST against ground truth measurements.
+
 
 ### Data
-I am working with MODIS & SRTM data that I downloaded via AppEEARS and ERA5-Land data provided by GECO Bern. Additionally, I use a topographic radiation index that was calculated using the Copernicus DEM.
+I am working with MODIS & SRTM data that I downloaded via AppEEARS and ERA5-Land data provided by GECO Bern. Additionally, I use a topographic radiation index that was calculated by Ting Tan using the Copernicus DEM.
 
 ### Reproduction of the workflow
-It is not possible to reproduce the entire workflow, including data downloading, since the original data is too large. The scripts in the folder "data-raw" give insight into the extracting process of the data. If you wish reproduce the workflow in it's entirety, please contact me or GECO Bern. 
+It is not possible to reproduce the entire workflow, including data downloading, since the original data is too large. If you wish reproduce the workflow in it's entirety, please contact me or GECO Bern. The reproduction can be started from the raw datasets that are in the folder "data-raw", together with R scripts for converting the raw data. The folder "data" contains pre-processed data. The "analysis" folder contains R scripts for further data processing and model training. The "R" folder contains R functions that are used in the analysis. Finally, the "vignettes" folder contains .Rmd files where the main analysis is conducted. All figures and plots that are generated during the project are stored in the "fig" folder. 
+The R scripts in "data-raw" and "analysis" are numbered from 01 to 11. To reproduce the workflow, you must simply execute the scripts in this order. The final results can then be generated executing the .Rmd files in "vignettes".
 
-For the reproduction of the main analysis, it is sufficient to work with data from the folder "data" which contains the pre-processed data. The "analysis" folder contains R scripts for further data processing and model training. The "R" folder contains R functions that are used in the analysis. Finally, the "vignettes" folder contains .Rmd files where the main analysis is conducted. All figures and plots that are generated during the project are stored inn the "figures" folder.
+For the reproduction of the main analysis, it is sufficient to just reproduce the files in "vignettes".
 
-Every .R and .Rmd file has a number. Follow the numbers in rising order to execute a clean reproduction of the workflow.
 
 ### Literature:
 

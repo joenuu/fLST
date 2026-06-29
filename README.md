@@ -17,10 +17,11 @@ The approach was tested in an exploratory manner. It could be shown that ΔLST i
 I am working with MODIS & SRTM data that I downloaded via AppEEARS and ERA5-Land data provided by GECO Bern. Additionally, I use a topographic radiation index that was calculated by Ting Tan using the Copernicus DEM.
 
 ### Reproduction of the workflow
-It is not possible to reproduce the entire workflow, including data downloading, since the original data is too large. If you wish reproduce the workflow in it's entirety, please contact me or GECO Bern. The reproduction can be started from the raw datasets that are in the folder "data-raw", together with R scripts for converting the raw data. The folder "data" contains pre-processed data. The "analysis" folder contains R scripts for further data processing and model training. The "R" folder contains R functions that are used in the analysis. Finally, the "vignettes" folder contains .Rmd files where the main analysis is conducted. All figures and plots that are generated during the project are stored in the "fig" folder. 
-The R scripts in "data-raw" and "analysis" are numbered from 01 to 11. To reproduce the workflow, you must simply execute the scripts in this order. The final results can then be generated executing the .Rmd files in "vignettes".
+**Folder Structure:** The folder "data-raw" contains the raw data (empty because files are too large for GitHub), while the folder "data" contains pre-processed data. The "analysis" folder contains R scripts for further data processing and model training. The "R" folder contains R functions that are used in the analysis. Finally, the "vignettes" folder contains .Rmd files where the main analysis is conducted. All figures and plots that are generated during the project are stored in the "fig" folder. 
 
-For the reproduction of the main analysis, it is sufficient to just reproduce the files in "vignettes".
+**Reproduction:** The intended reproduction is the reproduction of the analysis part and results of the project. It is not possible to reproduce the entire workflow (including data downloading and rangling of the raw data) from this repository since the original data is too large. If you wish reproduce the workflow in it's entirety, please contact me or GECO Bern. 
+ 
+The R scripts in and "analysis" are numbered from 05 to 11. To reproduce the workflow, you must simply execute the scripts in this order. The final results can then be generated executing the .Rmd files in "vignettes".
 
 
 ### Literature:

@@ -1,0 +1,1 @@
+This folder contains .Rmd files with all the results that are shown in my thesis. It is not possible to run them without first running the R scripts in "analysis" because you need files that only get generated once you run these scripts.

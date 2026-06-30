@@ -1,0 +1,1 @@
+This folder contains R scripts with most code that is used for my project. Run the scripts in the right order (from 05 to 11) to make sure everything works. These scripts mostly don't generate results, but prepares the data such that it can be used for good results. 

@@ -1,5 +1,6 @@
 library(ggplot2)
 library(here)
+library(dplyr)
 
 # This is a small script to plot the correlations of the different predictors and LST
 # It serves as a test if the data is ready for processing.

@@ -3,6 +3,8 @@ library(ggplot2)
 library(here)
 library(scico)
 library(lubridate)
+library(dplyr)
+library(readr)
 source(here::here("R", "get_lst_plot.R"))
 source(here::here("R", "get_stats_label.R")) # is executed inside get_lst_plot
 
@@ -16,6 +18,8 @@ all_predictions_lst <- model_data_clean |>
   filter(!is.na(lst_kelvin)) |>
   dplyr::select(lat, lon, date, pcwd_mm) |>
   right_join(spatial_predictions_lst, by = c("lat", "lon", "date"))
+
+pcwd_threshold <- 55
 
 dry_days <- all_predictions_lst |>
   group_by(date) |>

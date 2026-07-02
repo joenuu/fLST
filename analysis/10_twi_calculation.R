@@ -1,6 +1,7 @@
 library(terra)
 library(whitebox)
 library(here)
+library(readr)
 
 whitebox::install_whitebox()
 whitebox::wbt_init()
